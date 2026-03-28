@@ -38,7 +38,7 @@ jobs:
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
-            qt_arch: "linux_clang_64"
+            qt_arch: "linux_gcc_64"
         exclude:
           - os: windows-latest
             c_compiler: gcc
@@ -51,6 +51,8 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Qt
+      # Install Qt using the jurplel/install-qt-action. 
+      # We are installing the official version of Qt 6.10.0 for desktop development on both Windows and Linux.
       uses: jurplel/install-qt-action@v4
       with:
         version: "6.10.0"
