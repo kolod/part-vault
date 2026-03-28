@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project(PartVault LANGUAGES CXX)
 
-find_package(Qt6 6.7...6.11 REQUIRED COMPONENTS Core Widgets LinguistTools)
+find_package(Qt6 6.7...6.11 REQUIRED COMPONENTS Core Widgets Sql LinguistTools)
 
 qt_standard_project_setup()
 
@@ -22,6 +22,7 @@ target_link_libraries(PartVault
     PRIVATE
         Qt::Core
         Qt::Widgets
+        Qt::Sql
 )
 
 install(TARGETS PartVault
@@ -35,4 +36,5 @@ qt_generate_deploy_app_script(
     OUTPUT_SCRIPT deploy_script
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
+
 install(SCRIPT ${deploy_script})
