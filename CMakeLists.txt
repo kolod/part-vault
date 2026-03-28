@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project(PartVault LANGUAGES CXX)
 
-find_package(Qt6 6.11 REQUIRED COMPONENTS Core Widgets LinguistTools)
+find_package(Qt6 6.7...6.11 REQUIRED COMPONENTS Core Widgets LinguistTools)
 
 qt_standard_project_setup()
 
