@@ -48,7 +48,7 @@ jobs:
             build_type: Release
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Install Qt
       # Install Qt using the jurplel/install-qt-action. 
