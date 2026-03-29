@@ -49,11 +49,18 @@ bool DatabaseManager::initializeDatabase() {
     const QString sql = QString::fromUtf8(file.readAll()).trimmed();
     file.close();
 
-    // Execute the SQL script to initialize the database schema
+    // Execute the SQL script to initialize the database schema.
+    // QSqlQuery::exec() handles one statement at a time, so split on ';'.
     QSqlQuery query(m_database);
-    if (!query.exec(sql)) {
-        qCritical() << "Failed to initialize database:" << query.lastError().text();
-        return false;
+    const QStringList statements = sql.split(QLatin1Char(';'), Qt::SkipEmptyParts);
+    for (const QString& statement : statements) {
+        const QString trimmed = statement.trimmed();
+        if (trimmed.isEmpty()) continue;
+        if (!query.exec(trimmed)) {
+            qCritical() << "Failed to initialize database:" << query.lastError().text()
+                        << "\nStatement:" << trimmed;
+            return false;
+        }
     }
 
     // Database initialized successfully
