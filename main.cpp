@@ -14,8 +14,6 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "mainwindow.h"
-
 #include <QtLogging>
 #include <QMessageLogContext>
 #include <QApplication>
@@ -23,43 +21,63 @@
 #include <QLocale>
 #include <QLibraryInfo>
 #include <QTranslator>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
 #include <QDebug>
-
-#ifndef NDEBUG
-#include <QLocale>
 #include <QDirIterator>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <cstdio>
 #endif
 
 #include "database.h"
+#include "mainwindow.h"
 
 QtMessageHandler originalMessageHandler = nullptr;
 QFile logFile("partvault.log");
+static QtMsgType g_logLevel = QtWarningMsg;
 
 QString messageTypeToString(QtMsgType type) {
     switch (type) {
-        case QtDebugMsg: return "DEBUG";
-        case QtInfoMsg: return "INFO";
-        case QtWarningMsg: return "WARNING";
+        case QtDebugMsg:    return "DEBUG";
+        case QtInfoMsg:     return "INFO";
+        case QtWarningMsg:  return "WARNING";
         case QtCriticalMsg: return "CRITICAL";
-        case QtFatalMsg: return "FATAL";
-        default: return "UNKNOWN";
+        case QtFatalMsg:    return "FATAL";
+        default:            return "UNKNOWN";
     }
+}
+
+static QtMsgType parseMsgType(const QString& s, bool& ok) {
+    ok = true;
+    const QString lower = s.toLower();
+    if (lower == "debug")    return QtDebugMsg;
+    if (lower == "info")     return QtInfoMsg;
+    if (lower == "warning")  return QtWarningMsg;
+    if (lower == "critical") return QtCriticalMsg;
+    if (lower == "fatal")    return QtFatalMsg;
+    ok = false;
+    return QtDebugMsg;
 }
 
 bool openLogFile() {
     if (!logFile.isOpen())
         if (!logFile.open(QIODevice::Append | QIODevice::Text))
             return false;
-
     return true;
 }
 
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
 
-    // Attempt to open the log file if it's not already open
+    // Filter by configured log level
+    if (type < g_logLevel) return;
+
+    // Attempt to log to file; if it fails, we still want to call the original handler 
+    // to ensure the message is visible on the console.
     if (openLogFile()) {
 
-        // Format the log message
+        // Format: [timestamp] [file:line] [type]: message
         QString logMessage = QString("[%1] [%2:%3] [%4]: %5").arg(
             QDateTime::currentDateTime().toString(Qt::ISODate),
             context.file ? context.file : "unknown",
@@ -72,17 +90,29 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
         QTextStream out(&logFile);
         out << logMessage << "\n";
 
-        // Ensure the message is written to the file immediately
+        // Ensure the message is flushed to disk immediately
         out.flush();
     }
 
-    // Also print the log message to the console by calling the original message handler
+    // Call the original message handler (e.g. to also log to console)
     if (originalMessageHandler) originalMessageHandler(type, context, msg);
 }
 
 int main(int argc, char *argv[]) {
 
-    // Install the custom message handler and save the original one
+#ifdef Q_OS_WIN
+    // On Windows the app is built with the GUI subsystem (WIN32), so it has no
+    // console by default.  Attach to the parent process console (e.g. PowerShell /
+    // cmd) so that --help / --version output is actually visible.
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        FILE* f = nullptr;
+        freopen_s(&f, "CONOUT$", "w", stdout);
+        freopen_s(&f, "CONOUT$", "w", stderr);
+    }
+#endif
+
+    // Install our custom message handler to log to a file, while preserving 
+    // the original handler's behavior (e.g. logging to console).
     originalMessageHandler = qInstallMessageHandler(messageHandler);
 
     QApplication a(argc, argv);
@@ -91,14 +121,63 @@ int main(int argc, char *argv[]) {
     a.setOrganizationName("Oleksandr Kolodkin");
     a.setStyle(QStyleFactory::create("Fusion"));
 
-#ifndef NDEBUG
-    qDebug() << "Debug mode is enabled.";
-    qDebug() << "Application locale: " << QLocale::system().bcp47Name();
-    qDebug() << "Available resources:";
-    QDirIterator it(":", QDirIterator::Subdirectories);
-    while (it.hasNext()) qDebug() << it.next();
-#endif
+    // ── Command-line parsing ──────────────────────────────────────────────────
+    QCommandLineParser parser;
+    parser.setApplicationDescription("PartVault — inventory manager for electronic components");
+    parser.addHelpOption();
+    parser.addVersionOption();
 
+    QCommandLineOption logLevelOption(
+        "log-level",
+        "Minimum log level to record (debug|info|warning|critical|fatal). Default: warning.",
+        "level",
+        "warning"
+    );
+    parser.addOption(logLevelOption);
+
+    QCommandLineOption dummyOption(
+        "dummy",
+        "Populate the database with sample data on start."
+    );
+    parser.addOption(dummyOption);
+
+    QCommandLineOption resetOption(
+        "reset",
+        "Drop and recreate the database on start."
+    );
+    parser.addOption(resetOption);
+
+    // process() calls exit(0) for --help / --version, so the GUI is never started.
+    parser.process(a);
+
+    const bool wantDummy  = parser.isSet(dummyOption);
+    const bool wantReset  = parser.isSet(resetOption);
+    const QString logLevelStr = parser.value(logLevelOption);
+
+    // Validate log level
+    bool levelOk = false;
+    g_logLevel = parseMsgType(logLevelStr, levelOk);
+    if (!levelOk) {
+        qCritical() << "Unknown log level:" << logLevelStr
+                    << "(valid: debug, info, warning, critical, fatal)";
+        return 1;
+    }
+
+    // If logging debug messages
+    if (g_logLevel <= QtDebugMsg) {
+        // Print some additional environment info to help 
+        // with debugging issues related to missing translation files, etc.
+        qDebug() << "Debug mode is enabled.";
+        qDebug() << "Application locale:" << QLocale::system().bcp47Name();
+
+        // List all available resources for debugging purposes.  
+        // This can help identify issues with missing translation files, etc.
+        qDebug() << "Available resources:";
+        QDirIterator it(":", QDirIterator::Subdirectories);
+        while (it.hasNext()) qDebug() << it.next();
+    }
+
+    // Load Qt's built-in translations for standard dialogs, etc.
     QTranslator qtTranslator;
     if (qtTranslator.load(
         QLocale(),
@@ -112,6 +191,7 @@ int main(int argc, char *argv[]) {
         qDebug() << "Qt translator not found.";
     }
 
+    // Paths to search for the application's own translation files (e.g. for UI strings).
     const QStringList ApplicationTranslationPaths = {
         ":/i18n",
         qApp->applicationDirPath() + "/i18n/",
@@ -122,6 +202,7 @@ int main(int argc, char *argv[]) {
         qApp->applicationDirPath() + "/../share/part-vault/translations/"
     };
 
+    // Load the application's own translations (e.g. for UI strings).
     QTranslator myTranslator;
     for (const auto &ApplicationTranslationPath : ApplicationTranslationPaths) {
         if (myTranslator.load(
@@ -131,28 +212,33 @@ int main(int argc, char *argv[]) {
             ApplicationTranslationPath
         )) {
             a.installTranslator(&myTranslator);
-            qDebug() << "Application translator installed from " << ApplicationTranslationPath << ".";
+            qDebug() << "Application translator installed from" << ApplicationTranslationPath;
             break;
         } else {
-            qDebug() << "Application translator not found in " << ApplicationTranslationPath << ".";
+            qDebug() << "Application translator not found in" << ApplicationTranslationPath;
         }
     }
 
+    // Initialize the database manager and open the database connection.
     DatabaseManager databaseManager("partvault.db");
-    if (databaseManager.openDatabase()) {
 
-        MainWindow w(databaseManager);
-        w.show();
-        w.restoreSession();
-
-        auto exitCode = a.exec();
-
-        qDebug() << "Application exiting with code" << exitCode << ".";
-        logFile.close();
-    
-        return exitCode;
+    if (wantReset) {
+        if (!databaseManager.resetDatabase()) qFatal() << "Failed to reset database.";
+    } else {
+        if (!databaseManager.openDatabase())  qFatal() << "Failed to open database.";
     }
-    
-    // If we failed to open the database
-    return -1;
+
+    if (wantDummy) {
+        if (!databaseManager.addDummyData()) qCritical() << "Failed to load dummy data.";
+    }
+
+    // Start the main window and restore the previous session (e.g. open tabs, etc.).
+    MainWindow w(databaseManager);
+    w.show();
+    w.restoreSession();
+
+    // Run the application event loop and log the exit code when it finishes.
+    auto exitCode = a.exec();
+    qDebug() << "Application exiting with code" << exitCode;
+    return exitCode;
 }

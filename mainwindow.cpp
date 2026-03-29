@@ -18,7 +18,11 @@
 #include "ui_mainwindow.h"
 #include "categorytreemodel.h"
 #include "partsmodel.h"
+#include "addpartdialog.h"
+#include "addcategorydialog.h"
+#include "addstoragelocationdialog.h"
 #include <QHeaderView>
+#include <QDebug>
 
 MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     : QMainWindow(parent)
@@ -28,9 +32,9 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     ui->setupUi(this);
 
 
-    // Category tree (combo box)
-    auto* categoryModel = new CategoryTreeModel(m_databaseManager.database(), this);
-    ui->treeView->setModel(categoryModel);
+    // Category tree
+    m_categoryModel = new CategoryTreeModel(m_databaseManager.database(), this);
+    ui->treeView->setModel(m_categoryModel);
 
     // Parts table
     const QString conn = m_databaseManager.database().connectionName();
@@ -72,18 +76,31 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     });
 
     // Add Category action
-    connect(ui->actionAddCategory, &QAction::triggered, this, []() {
-        QMessageBox::information(nullptr, tr("Add Category"), tr("Add Category action triggered"));
+    connect(ui->actionAddCategory, &QAction::triggered, this, [this]() {
+        const QString conn = m_databaseManager.database().connectionName();
+        AddCategoryDialog dlg(conn, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+
+        if (m_databaseManager.addCategory(dlg.name(), dlg.parentId()) >= 0)
+            m_categoryModel->reload();
     });
 
     // Add Part action
-    connect(ui->actionAddPart, &QAction::triggered, this, []() {
-        QMessageBox::information(nullptr, tr("Add Part"), tr("Add Part action triggered"));
+    connect(ui->actionAddPart, &QAction::triggered, this, [this]() {
+        const QString conn = m_databaseManager.database().connectionName();
+        AddPartDialog dlg(conn, this);
+        if (dlg.exec() != QDialog::Accepted) return;
+
+        if (m_databaseManager.addPart(dlg.name(), dlg.quantity(), dlg.categoryId(), dlg.locationId()) >= 0)
+            m_partsModel->reload();
     });
 
     // Add Storage Location action
-    connect(ui->actionAddSorageLocation, &QAction::triggered, this, []() {
-        QMessageBox::information(nullptr, tr("Add Storage Location"), tr("Add Storage Location action triggered"));
+    connect(ui->actionAddSorageLocation, &QAction::triggered, this, [this]() {
+        AddStorageLocationDialog dlg(this);
+        if (dlg.exec() != QDialog::Accepted) return;
+
+        m_databaseManager.addStorageLocation(dlg.name());
     });
 
     // Remove Part action
@@ -99,6 +116,21 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     // Remove Unused Storage Location action
     connect(ui->actionRemoveUnusedStorageLocations, &QAction::triggered, this, []() {
         QMessageBox::information(nullptr, tr("Remove Unused Storage Location"), tr("Remove Unused Storage Location action triggered"));
+    });
+
+    // View Show/Hide Category Dock action
+    connect(ui->actionCategories, &QAction::triggered, this, [this](bool checked) {
+        ui->dockCategories->setVisible(checked);
+    });
+
+    // Keep the "Show Categories" menu action in sync with the actual visibility of the dock widget
+    connect(ui->dockCategories, &QDockWidget::visibilityChanged, this, [this](bool visible) {
+        ui->actionCategories->setChecked(visible);
+    });
+
+    // Filter by category when a category is selected in the tree view
+    connect( ui->treeView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
+        m_partsModel->setCategory(m_categoryModel->categoryId(current));
     });
 }
 

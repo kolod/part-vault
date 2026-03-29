@@ -15,6 +15,7 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "database.h"
+#include "utils.h"
 #include <QFile>
 #include <QDebug>
 
@@ -66,14 +67,7 @@ bool DatabaseManager::executeScript(const QString& path) {
     const QString sql = QString::fromUtf8(file.readAll()).trimmed();
     file.close();
 
-    // Remove comments from the SQL script (lines starting with '--')
-    const QStringList lines = sql.split(QLatin1Char('\n'));
-    QString cleanedSql;
-    for (const QString& line : lines) {
-        const QString trimmedLine = line.trimmed();
-        if (trimmedLine.startsWith("--") || trimmedLine.isEmpty()) continue;
-        cleanedSql += line + "\n"; // Preserve original formatting for non-comment lines
-    }
+    const QString cleanedSql = stripSqlComments(sql);
 
     // Execute the SQL script to initialize the database schema.
     // QSqlQuery::exec() handles one statement at a time, so split on ';
@@ -108,13 +102,68 @@ bool DatabaseManager::initializeDatabase() {
     }
 
     qDebug() << "Database initialized successfully";
-
-    if (!addDummyData())
-        qWarning() << "Failed to load dummy data (non-fatal)";
-
     return true;
 }
 
 bool DatabaseManager::addDummyData() {
     return executeScript(":/sql/dummy.sql");
+}
+
+int DatabaseManager::addCategory(const QString& name, int parentId) {
+    QSqlQuery q(m_database);
+    q.prepare("INSERT INTO categories (name, parent_id) VALUES (?, ?)");
+    q.addBindValue(name);
+    if (parentId < 0)
+        q.addBindValue(QVariant(QMetaType::fromType<int>()));
+    else
+        q.addBindValue(parentId);
+    if (!q.exec()) {
+        qWarning() << "addCategory failed:" << q.lastError().text();
+        return -1;
+    }
+    return q.lastInsertId().toInt();
+}
+
+int DatabaseManager::addPart(const QString& name, int quantity, int categoryId, int locationId) {
+    QSqlQuery q(m_database);
+    q.prepare("INSERT INTO parts (name, quantity, category_id, storage_location_id) VALUES (?, ?, ?, ?)");
+    q.addBindValue(name);
+    q.addBindValue(quantity);
+    if (categoryId < 0)
+        q.addBindValue(QVariant(QMetaType::fromType<int>()));
+    else
+        q.addBindValue(categoryId);
+    if (locationId < 0)
+        q.addBindValue(QVariant(QMetaType::fromType<int>()));
+    else
+        q.addBindValue(locationId);
+    if (!q.exec()) {
+        qWarning() << "addPart failed:" << q.lastError().text();
+        return -1;
+    }
+    return q.lastInsertId().toInt();
+}
+
+int DatabaseManager::addStorageLocation(const QString& name) {
+    QSqlQuery q(m_database);
+    q.prepare("INSERT INTO storage_locations (name) VALUES (?)");
+    q.addBindValue(name);
+    if (!q.exec()) {
+        qWarning() << "addStorageLocation failed:" << q.lastError().text();
+        return -1;
+    }
+    return q.lastInsertId().toInt();
+}
+
+bool DatabaseManager::resetDatabase() {
+    closeDatabase();
+
+    // Delete the physical file so the next open starts from scratch
+    if (QFile::exists(m_dbPath) && !QFile::remove(m_dbPath)) {
+        qCritical() << "resetDatabase: could not delete" << m_dbPath;
+        return false;
+    }
+
+    qDebug() << "Database file removed, re-opening...";
+    return openDatabase();
 }

@@ -16,31 +16,10 @@
 
 #pragma once
 
-#include <QtSql>
+#include <QString>
+#include <QList>
 
-class DatabaseManager
-{
-public:
-    DatabaseManager(const QString& dbPath);
-    ~DatabaseManager();
-
-    bool openDatabase();
-    void closeDatabase();
-    QSqlDatabase& database();
-
-    bool resetDatabase();   // drops and recreates the schema
-    bool addDummyData();    // populates sample data
-
-    // Returns the new row id on success, or -1 on failure.
-    int  addCategory       (const QString& name, int parentId);   // parentId = -1 → no parent
-    int  addPart           (const QString& name, int quantity, int categoryId, int locationId);  // -1 → NULL FK
-    int  addStorageLocation(const QString& name);
-
-private:
-    QSqlDatabase m_database;
-    QString m_dbPath;
-
-    bool executeScript(const QString& path);
-    bool initializeDatabase();
-};
-
+// Strips SQL line comments (-- ...) from every line of sql,
+// respecting single-quoted string literals so that '--' inside
+// a string value is preserved.  Returns the cleaned SQL text.
+QString stripSqlComments(const QString& sql);

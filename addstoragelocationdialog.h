@@ -16,31 +16,26 @@
 
 #pragma once
 
-#include <QtSql>
+#include <QDialog>
+#include <QString>
 
-class DatabaseManager
+class QLineEdit;
+class QDialogButtonBox;
+
+// Dialog for adding a new storage location (e.g. "Drawer A1", "Shelf C2").
+// On accept, call name() to retrieve the entered value.
+class AddStorageLocationDialog : public QDialog
 {
+    Q_OBJECT
+
 public:
-    DatabaseManager(const QString& dbPath);
-    ~DatabaseManager();
+    explicit AddStorageLocationDialog(QWidget* parent = nullptr);
 
-    bool openDatabase();
-    void closeDatabase();
-    QSqlDatabase& database();
-
-    bool resetDatabase();   // drops and recreates the schema
-    bool addDummyData();    // populates sample data
-
-    // Returns the new row id on success, or -1 on failure.
-    int  addCategory       (const QString& name, int parentId);   // parentId = -1 → no parent
-    int  addPart           (const QString& name, int quantity, int categoryId, int locationId);  // -1 → NULL FK
-    int  addStorageLocation(const QString& name);
+    QString name() const;
 
 private:
-    QSqlDatabase m_database;
-    QString m_dbPath;
+    QLineEdit*        m_nameEdit;
+    QDialogButtonBox* m_buttons;
 
-    bool executeScript(const QString& path);
-    bool initializeDatabase();
+    void validate();
 };
-

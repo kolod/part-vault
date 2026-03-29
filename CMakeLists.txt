@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.19)
 project(PartVault LANGUAGES CXX)
 
-find_package(Qt6 6.7...6.11 REQUIRED COMPONENTS Core Widgets Sql LinguistTools)
+option(ENABLE_TESTS "Build unit tests" ON)
+
+find_package(Qt6 6.7...6.11 REQUIRED COMPONENTS Core Widgets Sql LinguistTools Test)
 
 qt_standard_project_setup()
 
@@ -17,6 +19,14 @@ qt_add_executable(PartVault
     categorytreemodel.h
     partsmodel.cpp
     partsmodel.h
+    addpartdialog.cpp
+    addpartdialog.h
+    addcategorydialog.cpp
+    addcategorydialog.h
+    addstoragelocationdialog.cpp
+    addstoragelocationdialog.h
+    utils.cpp
+    utils.h
     $<$<PLATFORM_ID:Windows>:app.rc>
 )
 
@@ -52,3 +62,9 @@ qt_generate_deploy_app_script(
 )
 
 install(SCRIPT ${deploy_script})
+
+# ── Unit tests ────────────────────────────────────────────────────────────────
+if(ENABLE_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

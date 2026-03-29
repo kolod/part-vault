@@ -26,6 +26,7 @@
 
 #include "database.h"
 #include "partsmodel.h"
+#include "categorytreemodel.h"
 
 // QTreeView subclass that prevents the parent QComboBox from closing its
 // popup when the user clicks a branch expand/collapse indicator.
@@ -82,7 +83,8 @@ private:
     void closeEvent(QCloseEvent *event) override;
 
 private:
-    Ui::MainWindow *ui;
-    DatabaseManager &m_databaseManager;
-    PartsModel      *m_partsModel = nullptr;
+    Ui::MainWindow    *ui;
+    DatabaseManager   &m_databaseManager;
+    PartsModel        *m_partsModel    = nullptr;
+    CategoryTreeModel *m_categoryModel = nullptr;
 };
