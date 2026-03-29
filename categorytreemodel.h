@@ -26,6 +26,7 @@ struct CategoryNode
 {
     int      id;
     QString  name;
+    bool     active  = false;  // true if this node or any descendant has parts
     CategoryNode*        parent   = nullptr;
     QList<CategoryNode*> children;
 
@@ -65,5 +66,6 @@ private:
     CategoryNode*  m_root = nullptr;   // invisible root; its children are top-level categories
 
     void buildTree();
+    void markActiveNodes();
     CategoryNode* nodeFromIndex(const QModelIndex& index) const;
 };

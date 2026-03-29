@@ -20,6 +20,9 @@
 #include <QSqlError>
 #include <QDebug>
 #include <QHash>
+#include <QSet>
+#include <QPalette>
+#include <QApplication>
 
 CategoryTreeModel::CategoryTreeModel(QSqlDatabase& db, QObject* parent)
     : QAbstractItemModel(parent), m_db(db)
@@ -79,9 +82,42 @@ void CategoryTreeModel::buildTree() {
             m_root->children.append(node);
         }
     }
+
+    markActiveNodes();
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+void CategoryTreeModel::markActiveNodes() {
+    // Collect the set of category IDs that have at least one part directly.
+    QSet<int> directlyUsed;
+    QSqlQuery q(m_db);
+    q.prepare("SELECT DISTINCT category_id FROM parts WHERE category_id IS NOT NULL");
+    if (q.exec()) {
+        while (q.next())
+            directlyUsed.insert(q.value(0).toInt());
+    }
+
+    // For each directly-used category, walk up the ancestor chain and mark all
+    // nodes on the path as active (so parents of used categories are also highlighted).
+    // Build a flat id→node map by traversing the tree we just built.
+    QHash<int, CategoryNode*> nodeMap;
+    QList<CategoryNode*> stack = m_root->children;
+    while (!stack.isEmpty()) {
+        CategoryNode* n = stack.takeFirst();
+        nodeMap.insert(n->id, n);
+        stack.append(n->children);
+    }
+
+    for (int id : std::as_const(directlyUsed)) {
+        CategoryNode* node = nodeMap.value(id, nullptr);
+        while (node && node != m_root) {
+            if (node->active) break;   // already marked — ancestors are marked too
+            node->active = true;
+            node = node->parent;
+        }
+    }
+}
 
 CategoryNode* CategoryTreeModel::nodeFromIndex(const QModelIndex& index) const {
     if (!index.isValid())
@@ -140,6 +176,10 @@ QVariant CategoryTreeModel::data(const QModelIndex& index, int role) const {
     switch (role) {
     case Qt::DisplayRole:
         return node->name;
+    case Qt::ForegroundRole:
+        if (!node->active)
+            return QApplication::palette().color(QPalette::Disabled, QPalette::Text);
+        return {};
     case IdRole:
         return node->id;
     default:
@@ -155,5 +195,8 @@ QVariant CategoryTreeModel::headerData(int section, Qt::Orientation orientation,
 
 Qt::ItemFlags CategoryTreeModel::flags(const QModelIndex& index) const {
     if (!index.isValid()) return Qt::NoItemFlags;
+    CategoryNode* node = nodeFromIndex(index);
+    if (!node->active)
+        return Qt::NoItemFlags;
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }
