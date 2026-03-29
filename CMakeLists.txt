@@ -13,6 +13,8 @@ qt_add_executable(PartVault
     mainwindow.ui
     database.cpp
     database.h
+    categorytreemodel.cpp
+    categorytreemodel.h
     $<$<PLATFORM_ID:Windows>:app.rc>
 )
 

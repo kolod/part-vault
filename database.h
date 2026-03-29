@@ -18,3 +18,4 @@ private:
 
     bool initializeDatabase();
 };
+

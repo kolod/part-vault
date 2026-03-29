@@ -1,12 +1,18 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QTreeView>
+#include "categorytreemodel.h"
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , m_databaseManager(nullptr)
+    , m_databaseManager(databaseManager)
 {
     ui->setupUi(this);
+
+    // Set up the category combo box with a tree view and model
+    ui->cbCategory->setView(new QTreeView(this));
+    ui->cbCategory->setModel(new CategoryTreeModel(m_databaseManager.database(), this));
 }
 
 MainWindow::~MainWindow(){

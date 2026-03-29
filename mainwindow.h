@@ -14,16 +14,15 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(DatabaseManager &databaseManager, QWidget *parent = nullptr);
     ~MainWindow() override;
     void restoreSession();
     void saveSession();
-    void setDatabaseManager(DatabaseManager *databaseManager) { m_databaseManager = databaseManager; }
 
 private:
     void closeEvent(QCloseEvent *event) override;
 
 private:
     Ui::MainWindow *ui;
-    DatabaseManager *m_databaseManager;
+    DatabaseManager &m_databaseManager;
 };

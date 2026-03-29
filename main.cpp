@@ -125,8 +125,7 @@ int main(int argc, char *argv[]) {
     DatabaseManager databaseManager("partvault.db");
     if (databaseManager.openDatabase()) {
 
-        MainWindow w;
-        w.setDatabaseManager(&databaseManager);
+        MainWindow w(databaseManager);
         w.show();
         w.restoreSession();
 
