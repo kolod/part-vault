@@ -21,6 +21,7 @@ qt_add_executable(PartVault
 qt_add_resources(PartVault "sql"
     FILES
         sql/init.sql
+        sql/dummy.sql
         icons/logo.svg
 )
 

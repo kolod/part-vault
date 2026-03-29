@@ -38,11 +38,12 @@ QSqlDatabase& DatabaseManager::database() {
     return m_database;
 }
 
-bool DatabaseManager::initializeDatabase() {
-    // Open the SQL initialization script from the resource system
-    QFile file(":/sql/init.sql");
+bool DatabaseManager::executeScript(const QString& path) {
+
+    // Open the SQL script file
+    QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qCritical() << "Failed to open init.sql resource";
+        qError() << "Failed to open SQL script:" << path;
         return false;
     }
 
@@ -60,7 +61,7 @@ bool DatabaseManager::initializeDatabase() {
     }
 
     // Execute the SQL script to initialize the database schema.
-    // QSqlQuery::exec() handles one statement at a time, so split on ';'.
+    // QSqlQuery::exec() handles one statement at a time, so split on ';
     QSqlQuery query(m_database);
     const QStringList statements = cleanedSql.split(QLatin1Char(';'), Qt::SkipEmptyParts);
     for (const QString& statement : statements) {
@@ -73,13 +74,26 @@ bool DatabaseManager::initializeDatabase() {
 
         // Execute the SQL statement
         if (!query.exec(trimmed)) {
-            qCritical() << "Failed to initialize database:" << query.lastError().text()
-                        << "\nStatement:" << trimmed;
+            qError() << "Failed to execute SQL statement:" << query.lastError().text()
+                     << "\nStatement:" << trimmed;
             return false;
         }
+    }
+}
+
+bool DatabaseManager::initializeDatabase() {
+
+    // Initialize the database schema
+    if (!executeScript(":/init.sql")) {
+        qCritical() << "Database initialization failed";
+        return false;
     }
 
     // Database initialized successfully
     qDebug() << "Database initialized successfully";
     return true;
+}
+
+bool DatabaseManager::addDummyData() {
+    return executeScript(":/dummy.sql");
 }
