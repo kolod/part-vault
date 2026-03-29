@@ -11,6 +11,15 @@ qt_add_executable(PartVault
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    database.cpp
+    database.h
+    $<$<PLATFORM_ID:Windows>:app.rc>
+)
+
+qt_add_resources(PartVault "sql"
+    FILES
+        sql/init.sql
+        icons/logo.svg
 )
 
 qt_add_translations(

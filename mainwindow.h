@@ -4,6 +4,8 @@
 #include <QCloseEvent>
 #include <QSettings>
 
+#include "database.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui {class MainWindow;}
 QT_END_NAMESPACE
@@ -16,10 +18,12 @@ public:
     ~MainWindow() override;
     void restoreSession();
     void saveSession();
+    void setDatabaseManager(DatabaseManager *databaseManager) { m_databaseManager = databaseManager; }
 
 private:
     void closeEvent(QCloseEvent *event) override;
 
 private:
     Ui::MainWindow *ui;
+    DatabaseManager *m_databaseManager;
 };

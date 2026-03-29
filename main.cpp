@@ -14,6 +14,8 @@
 #include <QDirIterator>
 #endif
 
+#include "database.h"
+
 QtMessageHandler originalMessageHandler = nullptr;
 QFile logFile("partvault.log");
 
@@ -53,6 +55,9 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
         // Write the log message to the file
         QTextStream out(&logFile);
         out << logMessage << "\n";
+
+        // Ensure the message is written to the file immediately
+        out.flush();
     }
 
     // Also print the log message to the console by calling the original message handler
@@ -72,8 +77,7 @@ int main(int argc, char *argv[])
 
 #ifndef NDEBUG
     qDebug() << "Debug mode is enabled.";
-    qDebug() << "Application locale: " << QLocale::system().bcp47Name() << "\n";
-
+    qDebug() << "Application locale: " << QLocale::system().bcp47Name();
     qDebug() << "Available resources:";
     QDirIterator it(":", QDirIterator::Subdirectories);
     while (it.hasNext()) qDebug() << it.next();
@@ -118,7 +122,11 @@ int main(int argc, char *argv[])
         }
     }
 
+    DatabaseManager databaseManager("partvault.db");
+    databaseManager.openDatabase();
+
     MainWindow w;
+    w.setDatabaseManager(&databaseManager);
     w.show();
     w.restoreSession();
 
