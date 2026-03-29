@@ -1,3 +1,19 @@
+//    PartVault — simple inventory manager for electronic components
+//    Copyright (C) 2026-...  Oleksandr Kolodkin <oleksandr.kolodkin@ukr.net>
+//
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #include "categorytreemodel.h"
 
 #include <QSqlQuery>
@@ -12,13 +28,11 @@ CategoryTreeModel::CategoryTreeModel(QSqlDatabase& db, QObject* parent)
     buildTree();
 }
 
-CategoryTreeModel::~CategoryTreeModel()
-{
+CategoryTreeModel::~CategoryTreeModel() {
     delete m_root;
 }
 
-void CategoryTreeModel::reload()
-{
+void CategoryTreeModel::reload() {
     beginResetModel();
     delete m_root;
     m_root = new CategoryNode{-1, QString{}};
@@ -26,8 +40,7 @@ void CategoryTreeModel::reload()
     endResetModel();
 }
 
-void CategoryTreeModel::buildTree()
-{
+void CategoryTreeModel::buildTree() {
     // Load every category row into a flat map keyed by id.
     QHash<int, CategoryNode*> nodeMap;
 
@@ -70,23 +83,20 @@ void CategoryTreeModel::buildTree()
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-CategoryNode* CategoryTreeModel::nodeFromIndex(const QModelIndex& index) const
-{
+CategoryNode* CategoryTreeModel::nodeFromIndex(const QModelIndex& index) const {
     if (!index.isValid())
         return m_root;
     return static_cast<CategoryNode*>(index.internalPointer());
 }
 
-int CategoryTreeModel::categoryId(const QModelIndex& index) const
-{
+int CategoryTreeModel::categoryId(const QModelIndex& index) const {
     if (!index.isValid()) return -1;
     return nodeFromIndex(index)->id;
 }
 
 // ── QAbstractItemModel ───────────────────────────────────────────────────────
 
-QModelIndex CategoryTreeModel::index(int row, int column, const QModelIndex& parent) const
-{
+QModelIndex CategoryTreeModel::index(int row, int column, const QModelIndex& parent) const {
     if (!hasIndex(row, column, parent))
         return {};
 
@@ -97,8 +107,7 @@ QModelIndex CategoryTreeModel::index(int row, int column, const QModelIndex& par
     return createIndex(row, column, parentNode->children.at(row));
 }
 
-QModelIndex CategoryTreeModel::parent(const QModelIndex& child) const
-{
+QModelIndex CategoryTreeModel::parent(const QModelIndex& child) const {
     if (!child.isValid())
         return {};
 
@@ -115,18 +124,15 @@ QModelIndex CategoryTreeModel::parent(const QModelIndex& child) const
     return createIndex(row, 0, parentNode);
 }
 
-int CategoryTreeModel::rowCount(const QModelIndex& parent) const
-{
+int CategoryTreeModel::rowCount(const QModelIndex& parent) const {
     return nodeFromIndex(parent)->children.size();
 }
 
-int CategoryTreeModel::columnCount(const QModelIndex&) const
-{
+int CategoryTreeModel::columnCount(const QModelIndex&) const {
     return 1;
 }
 
-QVariant CategoryTreeModel::data(const QModelIndex& index, int role) const
-{
+QVariant CategoryTreeModel::data(const QModelIndex& index, int role) const {
     if (!index.isValid()) return {};
 
     CategoryNode* node = nodeFromIndex(index);
@@ -141,15 +147,13 @@ QVariant CategoryTreeModel::data(const QModelIndex& index, int role) const
     }
 }
 
-QVariant CategoryTreeModel::headerData(int section, Qt::Orientation orientation, int role) const
-{
+QVariant CategoryTreeModel::headerData(int section, Qt::Orientation orientation, int role) const {
     if (orientation == Qt::Horizontal && role == Qt::DisplayRole && section == 0)
         return tr("Category");
     return {};
 }
 
-Qt::ItemFlags CategoryTreeModel::flags(const QModelIndex& index) const
-{
+Qt::ItemFlags CategoryTreeModel::flags(const QModelIndex& index) const {
     if (!index.isValid()) return Qt::NoItemFlags;
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }

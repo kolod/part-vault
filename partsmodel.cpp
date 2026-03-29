@@ -1,0 +1,199 @@
+//    PartVault — simple inventory manager for electronic components
+//    Copyright (C) 2026-...  Oleksandr Kolodkin <oleksandr.kolodkin@ukr.net>
+//
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#include "partsmodel.h"
+
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QDebug>
+
+PartsModel::PartsModel(const QString& connectionName, QObject* parent)
+    : QAbstractTableModel(parent), m_connectionName(connectionName)
+{
+    fetchParts();
+}
+
+void PartsModel::setCategory(int categoryId)
+{
+    if (m_categoryFilter == categoryId) return;
+    qDebug() << "PartsModel: category filter changed" << m_categoryFilter << "->" << categoryId;
+    m_categoryFilter = categoryId;
+    reload();
+}
+
+void PartsModel::reload()
+{
+    beginResetModel();
+    fetchParts();
+    endResetModel();
+}
+
+int PartsModel::partId(int row) const
+{
+    if (row < 0 || row >= m_parts.size()) return -1;
+    return m_parts.at(row).id;
+}
+
+// ── data loading ─────────────────────────────────────────────────────────────
+
+QList<int> PartsModel::categoryDescendants(int rootId) const
+{
+    QSqlDatabase db = QSqlDatabase::database(m_connectionName);
+    QList<int> result;
+    QList<int> queue = {rootId};
+
+    QSqlQuery query(db);
+    while (!queue.isEmpty()) {
+        const int current = queue.takeFirst();
+        result.append(current);
+        query.prepare("SELECT id FROM categories WHERE parent_id = :pid");
+        query.bindValue(":pid", current);
+        if (query.exec()) {
+            while (query.next())
+                queue.append(query.value(0).toInt());
+        } else {
+            qWarning() << "PartsModel: categoryDescendants query failed for id" << current
+                       << ":" << query.lastError().text();
+        }
+    }
+    qDebug() << "PartsModel: category" << rootId << "expands to" << result.size() << "ids:" << result;
+    return result;
+}
+
+void PartsModel::fetchParts()
+{
+    m_parts.clear();
+
+    QSqlDatabase db = QSqlDatabase::database(m_connectionName);
+    if (!db.isOpen()) {
+        qWarning() << "PartsModel: database not open (connection:" << m_connectionName << ")";
+        return;
+    }
+    qDebug() << "PartsModel: fetching parts, category filter =" << m_categoryFilter;
+
+    // Fetch all columns needed to populate PartRecord.
+    // p.id, p.name, p.quantity — core part fields.
+    // c.name  — resolved via LEFT JOIN so parts with no category return an empty string.
+    // sl.name — resolved via LEFT JOIN so parts with no storage location return an empty string.
+    // A WHERE clause is appended below when a category filter is active.
+    QString sql =
+        "SELECT p.id, p.name, p.quantity, COALESCE(c.name, ''), COALESCE(s.name, '') "
+        "FROM parts AS p "
+        "LEFT JOIN categories        AS c ON c.id = p.category_id "
+        "LEFT JOIN storage_locations AS s ON s.id = p.storage_location_id";
+
+    QSqlQuery query(db);
+    query.setForwardOnly(true);
+
+    if (m_categoryFilter > 0) {
+        const QList<int> ids = categoryDescendants(m_categoryFilter);
+        QStringList placeholders(ids.size(), "?");
+
+        sql += QString(" WHERE p.category_id IN (%1)").arg(placeholders.join(", "));
+        sql += " ORDER BY p.name";
+        if (!query.prepare(sql)) {
+            qWarning() << "PartsModel: prepare failed:" << query.lastError().text();
+            return;
+        }
+        for (const int id : ids)
+            query.addBindValue(id);
+    } else {
+        sql += " ORDER BY p.name";
+        if (!query.prepare(sql)) {
+            qWarning() << "PartsModel: prepare failed:" << query.lastError().text();
+            return;
+        }
+    }
+
+    qDebug() << "PartsModel: SQL:" << sql;
+
+    if (!query.exec()) {
+        qWarning() << "PartsModel: exec failed:" << query.lastError().text();
+        return;
+    }
+
+    while (query.next()) {
+        m_parts.append({
+            query.value(0).toInt(),
+            query.value(1).toString(),
+            query.value(2).toInt(),
+            query.value(3).toString(),
+            query.value(4).toString()
+        });
+    }
+
+    qDebug() << "PartsModel: loaded" << m_parts.size() << "parts";
+}
+
+// ── QAbstractTableModel ───────────────────────────────────────────────────────
+
+int PartsModel::rowCount(const QModelIndex& parent) const
+{
+    if (parent.isValid()) return 0;
+    return m_parts.size();
+}
+
+int PartsModel::columnCount(const QModelIndex& parent) const
+{
+    if (parent.isValid()) return 0;
+    return ColCount;
+}
+
+QVariant PartsModel::data(const QModelIndex& index, int role) const
+{
+    if (!index.isValid() || index.row() >= m_parts.size())
+        return {};
+
+    const PartRecord& p = m_parts.at(index.row());
+
+    if (role == IdRole)
+        return p.id;
+
+    if (role == Qt::DisplayRole || role == Qt::EditRole) {
+        switch (index.column()) {
+        case ColName:     return p.name;
+        case ColQuantity: return p.quantity;
+        case ColCategory: return p.categoryName;
+        case ColLocation: return p.locationName;
+        }
+    }
+
+    if (role == Qt::TextAlignmentRole && index.column() == ColQuantity)
+        return QVariant(Qt::AlignRight | Qt::AlignVCenter);
+
+    return {};
+}
+
+QVariant PartsModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
+        return {};
+
+    switch (section) {
+    case ColName:     return tr("Name");
+    case ColQuantity: return tr("Qty");
+    case ColCategory: return tr("Category");
+    case ColLocation: return tr("Location");
+    }
+    return {};
+}
+
+Qt::ItemFlags PartsModel::flags(const QModelIndex& index) const
+{
+    if (!index.isValid()) return Qt::NoItemFlags;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+}

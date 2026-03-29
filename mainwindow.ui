@@ -18,36 +18,141 @@
     <normaloff>:/icons/logo.svg</normaloff>:/icons/logo.svg</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="1">
-     <widget class="QLineEdit" name="lineEdit"/>
-    </item>
-    <item row="1" column="0" colspan="5">
-     <widget class="QTableView" name="tableView"/>
-    </item>
-    <item row="0" column="0">
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>Search:</string>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Orientation::Horizontal</enum>
       </property>
+      <widget class="QTreeView" name="treeView">
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
+      </widget>
+      <widget class="QTableView" name="tableView"/>
      </widget>
-    </item>
-    <item row="0" column="3">
-     <widget class="QPushButton" name="pushButton">
-      <property name="text">
-       <string>Add</string>
-      </property>
-      <property name="icon">
-       <iconset theme="QIcon::ThemeIcon::ListAdd"/>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="2">
-     <widget class="QComboBox" name="cbCategory"/>
     </item>
    </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionExport"/>
+    <addaction name="actionImport"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+    <addaction name="actionAboutQt"/>
+   </widget>
+   <widget class="QMenu" name="menuParts">
+    <property name="title">
+     <string>Parts</string>
+    </property>
+    <addaction name="actionAddPart"/>
+    <addaction name="actionRemovePart"/>
+   </widget>
+   <widget class="QMenu" name="menuCategories">
+    <property name="title">
+     <string>Categories</string>
+    </property>
+    <addaction name="actionAddCategory"/>
+    <addaction name="actionRemoveUnusedCategories"/>
+   </widget>
+   <widget class="QMenu" name="menuPlaces">
+    <property name="title">
+     <string>Places</string>
+    </property>
+    <addaction name="actionAddSorageLocation"/>
+    <addaction name="actionRemoveUnusedStorageLocations"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuParts"/>
+   <addaction name="menuCategories"/>
+   <addaction name="menuPlaces"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About...</string>
+   </property>
+  </action>
+  <action name="actionAboutQt">
+   <property name="text">
+    <string>About Qt...</string>
+   </property>
+  </action>
+  <action name="actionAddPart">
+   <property name="text">
+    <string>Add part...</string>
+   </property>
+  </action>
+  <action name="actionRemovePart">
+   <property name="text">
+    <string>Remove part</string>
+   </property>
+  </action>
+  <action name="actionAddCategory">
+   <property name="text">
+    <string>Add category...</string>
+   </property>
+  </action>
+  <action name="actionRemoveUnusedCategories">
+   <property name="text">
+    <string>Remove unused</string>
+   </property>
+  </action>
+  <action name="actionAddSorageLocation">
+   <property name="text">
+    <string>Add place</string>
+   </property>
+  </action>
+  <action name="actionRemoveUnusedStorageLocations">
+   <property name="text">
+    <string>Remove unused</string>
+   </property>
+  </action>
+  <action name="actionExport">
+   <property name="text">
+    <string>Export...</string>
+   </property>
+  </action>
+  <action name="actionImport">
+   <property name="text">
+    <string>Import...</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
  </widget>
  <resources>
   <include location="build/Desktop_Qt_6_11_0_llvm_mingw_64_bit-Debug/.qt/rcc/sql.qrc"/>

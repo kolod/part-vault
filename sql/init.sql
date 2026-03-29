@@ -50,26 +50,25 @@ CREATE TABLE IF NOT EXISTS part_files (
     PRIMARY KEY (part_id, file_id)
 );
 
--- ---------------------------------------------------------------------------
 -- Seed data: default component categories (mirrors Mouser top-level taxonomy).
 -- INSERT OR IGNORE ensures re-running init never duplicates rows.
--- ---------------------------------------------------------------------------
-
 INSERT OR IGNORE INTO categories (id, name, parent_id) VALUES
-    -- Top-level categories (parent_id IS NULL)
-    (  1, 'Passive Components',             NULL),
-    (  2, 'Semiconductors',                 NULL),
-    (  3, 'Electromechanical',              NULL),
-    (  4, 'Connectors',                     NULL),
-    (  5, 'RF / Wireless',                  NULL),
-    (  6, 'Power',                          NULL),
-    (  7, 'Optoelectronics',                NULL),
-    (  8, 'Sensors & Transducers',          NULL),
-    (  9, 'Embedded Computers & SBCs',      NULL),
-    ( 10, 'Test & Measurement',             NULL),
-    ( 11, 'Circuit Protection',             NULL),
-    ( 12, 'Cables & Wires',                 NULL),
-    ( 13, 'Tools & Supplies',               NULL),
+    -- Virtual root — allows tree views to show every category under one node.
+    (  0, 'All',                            NULL),
+    -- Top-level categories (parent_id = 0)
+    (  1, 'Passive Components',                0),
+    (  2, 'Semiconductors',                    0),
+    (  3, 'Electromechanical',                 0),
+    (  4, 'Connectors',                        0),
+    (  5, 'RF / Wireless',                     0),
+    (  6, 'Power',                             0),
+    (  7, 'Optoelectronics',                   0),
+    (  8, 'Sensors & Transducers',             0),
+    (  9, 'Embedded Computers & SBCs',         0),
+    ( 10, 'Test & Measurement',                0),
+    ( 11, 'Circuit Protection',                0),
+    ( 12, 'Cables & Wires',                    0),
+    ( 13, 'Tools & Supplies',                  0),
     -- Passive Components (parent 1)
     ( 14, 'Resistors',                         1),
     ( 15, 'Capacitors',                        1),

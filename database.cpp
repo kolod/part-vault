@@ -1,7 +1,22 @@
+//    PartVault — simple inventory manager for electronic components
+//    Copyright (C) 2026-...  Oleksandr Kolodkin <oleksandr.kolodkin@ukr.net>
+//
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #include "database.h"
 #include <QFile>
 #include <QDebug>
-#include <algorithm>
 
 DatabaseManager::DatabaseManager(const QString& dbPath) : m_dbPath(dbPath) {
     m_database = QSqlDatabase::addDatabase("QSQLITE");
@@ -43,7 +58,7 @@ bool DatabaseManager::executeScript(const QString& path) {
     // Open the SQL script file
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qError() << "Failed to open SQL script:" << path;
+        qCritical() << "Failed to open SQL script:" << path;
         return false;
     }
 
@@ -74,26 +89,32 @@ bool DatabaseManager::executeScript(const QString& path) {
 
         // Execute the SQL statement
         if (!query.exec(trimmed)) {
-            qError() << "Failed to execute SQL statement:" << query.lastError().text()
-                     << "\nStatement:" << trimmed;
+            qCritical() << "Failed to execute SQL statement:" << query.lastError().text()
+                        << "\nStatement:" << trimmed;
             return false;
         }
     }
+
+    // All statements executed successfully
+    return true;
 }
 
 bool DatabaseManager::initializeDatabase() {
 
     // Initialize the database schema
-    if (!executeScript(":/init.sql")) {
+    if (!executeScript(":/sql/init.sql")) {
         qCritical() << "Database initialization failed";
         return false;
     }
 
-    // Database initialized successfully
     qDebug() << "Database initialized successfully";
+
+    if (!addDummyData())
+        qWarning() << "Failed to load dummy data (non-fatal)";
+
     return true;
 }
 
 bool DatabaseManager::addDummyData() {
-    return executeScript(":/dummy.sql");
+    return executeScript(":/sql/dummy.sql");
 }
