@@ -64,8 +64,8 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
     if (originalMessageHandler) originalMessageHandler(type, context, msg);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+
     // Install the custom message handler and save the original one
     originalMessageHandler = qInstallMessageHandler(messageHandler);
 
@@ -123,17 +123,21 @@ int main(int argc, char *argv[])
     }
 
     DatabaseManager databaseManager("partvault.db");
-    databaseManager.openDatabase();
+    if (databaseManager.openDatabase()) {
 
-    MainWindow w;
-    w.setDatabaseManager(&databaseManager);
-    w.show();
-    w.restoreSession();
+        MainWindow w;
+        w.setDatabaseManager(&databaseManager);
+        w.show();
+        w.restoreSession();
 
-    auto exitCode = a.exec();
+        auto exitCode = a.exec();
 
-    qDebug() << "Application exiting with code" << exitCode << ".";
-    logFile.close();
-
-    return exitCode;
+        qDebug() << "Application exiting with code" << exitCode << ".";
+        logFile.close();
+    
+        return exitCode;
+    }
+    
+    // If we failed to open the database
+    return -1;
 }

@@ -1,6 +1,7 @@
 #include "database.h"
 #include <QFile>
 #include <QDebug>
+#include <algorithm>
 
 DatabaseManager::DatabaseManager(const QString& dbPath) : m_dbPath(dbPath) {
     m_database = QSqlDatabase::addDatabase("QSQLITE");
@@ -49,13 +50,28 @@ bool DatabaseManager::initializeDatabase() {
     const QString sql = QString::fromUtf8(file.readAll()).trimmed();
     file.close();
 
+    // Remove comments from the SQL script (lines starting with '--')
+    const QStringList lines = sql.split(QLatin1Char('\n'));
+    QString cleanedSql;
+    for (const QString& line : lines) {
+        const QString trimmedLine = line.trimmed();
+        if (trimmedLine.startsWith("--") || trimmedLine.isEmpty()) continue;
+        cleanedSql += line + "\n"; // Preserve original formatting for non-comment lines
+    }
+
     // Execute the SQL script to initialize the database schema.
     // QSqlQuery::exec() handles one statement at a time, so split on ';'.
     QSqlQuery query(m_database);
-    const QStringList statements = sql.split(QLatin1Char(';'), Qt::SkipEmptyParts);
+    const QStringList statements = cleanedSql.split(QLatin1Char(';'), Qt::SkipEmptyParts);
     for (const QString& statement : statements) {
+
+        // Trim the statement to remove leading/trailing whitespace
         const QString trimmed = statement.trimmed();
+
+        // Skip empty statements that may result from splitting
         if (trimmed.isEmpty()) continue;
+
+        // Execute the SQL statement
         if (!query.exec(trimmed)) {
             qCritical() << "Failed to initialize database:" << query.lastError().text()
                         << "\nStatement:" << trimmed;
