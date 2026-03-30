@@ -17,6 +17,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "categorytreemodel.h"
+#include "storagetreemodel.h"
 #include "partsmodel.h"
 #include "addpartdialog.h"
 #include "addcategorydialog.h"
@@ -38,9 +39,13 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     // Create models
     mPartsModel = new PartsModel(conn, this);
     mCategoryModel = new CategoryTreeModel(conn, this);
+    mStorageModel  = new StorageTreeModel(conn, this);
 
     // Category tree view
     ui->viewCategories->setModel(mCategoryModel);
+
+    // Storage locations tree view
+    ui->viewStorageLocations->setModel(mStorageModel);
 
     // Parts table view
     ui->tableView->setModel(mPartsModel);
@@ -104,10 +109,23 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Add Storage Location action
     connect(ui->actionAddSorageLocation, &QAction::triggered, this, [this]() {
-        AddStorageLocationDialog dlg(this);
+        const QString conn = mDatabaseManager.database().connectionName();
+        auto index = ui->viewStorageLocations->currentIndex();
+        auto locationId = mStorageModel->locationId(index);
+
+        AddStorageLocationDialog dlg(conn, locationId, this);
         if (dlg.exec() != QDialog::Accepted) return;
 
-        mDatabaseManager.addStorageLocation(dlg.name());
+        const int newId = mDatabaseManager.addStorageLocation(dlg.name(), dlg.parentId());
+        if (newId >= 0) {
+            mStorageModel->reload(ui->viewStorageLocations);
+            const QModelIndex newIndex = mStorageModel->indexForId(newId);
+            if (newIndex.isValid()) {
+                ui->viewStorageLocations->expand(newIndex.parent());
+                ui->viewStorageLocations->setCurrentIndex(newIndex);
+                ui->viewStorageLocations->scrollTo(newIndex);
+            }
+        }
     });
 
     // Remove Part action
@@ -135,9 +153,24 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         ui->actionCategories->setChecked(visible);
     });
 
+    // View Show/Hide Storage Locations Dock action
+    connect(ui->actionStorageLocations, &QAction::triggered, this, [this](bool checked) {
+        ui->dockStorageLocations->setVisible(checked);
+    });
+
+    // Keep the "Show Storage Locations" menu action in sync with the actual visibility of the dock widget
+    connect(ui->dockStorageLocations, &QDockWidget::visibilityChanged, this, [this](bool visible) {
+        ui->actionStorageLocations->setChecked(visible);
+    });
+
     // Filter by category when a category is selected in the tree view
     connect( ui->viewCategories->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
         mPartsModel->setCategory(mCategoryModel->categoryId(current));
+    });
+
+    // Filter by storage location when a location is selected in the tree view
+    connect(ui->viewStorageLocations->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
+        mPartsModel->setStorageLocation(mStorageModel->locationId(current));
     });
 }
 
@@ -168,6 +201,24 @@ void MainWindow::restoreSession(){
             ui->viewCategories->scrollTo(idx);
         }
     }
+
+    // Restore expanded storage locations
+    const QList<QVariant> expandedStorageRaw = settings.value("storage/expanded").toList();
+    for (const QVariant& v : expandedStorageRaw) {
+        const QModelIndex idx = mStorageModel->indexForId(v.toInt());
+        if (idx.isValid())
+            ui->viewStorageLocations->expand(idx);
+    }
+
+    // Restore selected storage location
+    const int selectedStorageId = settings.value("storage/selected", 0).toInt();
+    if (selectedStorageId > 0) {
+        const QModelIndex idx = mStorageModel->indexForId(selectedStorageId);
+        if (idx.isValid()) {
+            ui->viewStorageLocations->setCurrentIndex(idx);
+            ui->viewStorageLocations->scrollTo(idx);
+        }
+    }
 }
 
 void MainWindow::saveSession(){
@@ -192,6 +243,23 @@ void MainWindow::saveSession(){
     // Save selected category ID
     const int selectedId = mCategoryModel->categoryId(ui->viewCategories->currentIndex());
     settings.setValue("categories/selected", selectedId);
+
+    // Save expanded storage location IDs
+    QList<QVariant> expandedStorageIds;
+    std::function<void(const QModelIndex&)> collectExpandedStorage = [&](const QModelIndex& parent) {
+        for (int r = 0; r < mStorageModel->rowCount(parent); ++r) {
+            const QModelIndex idx = mStorageModel->index(r, 0, parent);
+            if (ui->viewStorageLocations->isExpanded(idx))
+                expandedStorageIds.append(mStorageModel->locationId(idx));
+            collectExpandedStorage(idx);
+        }
+    };
+    collectExpandedStorage(QModelIndex{});
+    settings.setValue("storage/expanded", expandedStorageIds);
+
+    // Save selected storage location ID
+    const int selectedStorageId = mStorageModel->locationId(ui->viewStorageLocations->currentIndex());
+    settings.setValue("storage/selected", selectedStorageId);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event){

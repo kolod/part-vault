@@ -34,7 +34,7 @@ public:
     // Returns the new row id on success, or -1 on failure.
     int  addCategory       (const QString& name, int parentId);   // parentId = -1 → no parent
     int  addPart           (const QString& name, int quantity, int categoryId, int locationId);  // -1 → NULL FK
-    int  addStorageLocation(const QString& name);
+    int  addStorageLocation(const QString& name, int parentId = -1);  // parentId = -1 → no parent
 
 private:
     QSqlDatabase mDatabase;

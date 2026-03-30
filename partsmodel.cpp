@@ -35,6 +35,14 @@ void PartsModel::setCategory(int categoryId)
     reload();
 }
 
+void PartsModel::setStorageLocation(int locationId)
+{
+    if (mStorageFilter == locationId) return;
+    qDebug() << "PartsModel: storage filter changed" << mStorageFilter << "->" << locationId;
+    mStorageFilter = locationId;
+    reload();
+}
+
 void PartsModel::reload()
 {
     beginResetModel();
@@ -74,6 +82,30 @@ QList<int> PartsModel::categoryDescendants(int rootId) const
     return result;
 }
 
+QList<int> PartsModel::storageDescendants(int rootId) const
+{
+    QSqlDatabase db = QSqlDatabase::database(mConnectionName);
+    QList<int> result;
+    QList<int> queue = {rootId};
+
+    QSqlQuery query(db);
+    while (!queue.isEmpty()) {
+        const int current = queue.takeFirst();
+        result.append(current);
+        query.prepare("SELECT id FROM storage_locations WHERE parent_id = :pid");
+        query.bindValue(":pid", current);
+        if (query.exec()) {
+            while (query.next())
+                queue.append(query.value(0).toInt());
+        } else {
+            qWarning() << "PartsModel: storageDescendants query failed for id" << current
+                       << ":" << query.lastError().text();
+        }
+    }
+    qDebug() << "PartsModel: storage" << rootId << "expands to" << result.size() << "ids:" << result;
+    return result;
+}
+
 void PartsModel::fetchParts()
 {
     mParts.clear();
@@ -99,25 +131,34 @@ void PartsModel::fetchParts()
     QSqlQuery query(db);
     query.setForwardOnly(true);
 
-    if (mCategoryFilter > 0) {
-        const QList<int> ids = categoryDescendants(mCategoryFilter);
-        QStringList placeholders(ids.size(), "?");
+    QStringList conditions;
+    QList<int> categoryIds;
+    QList<int> storageIds;
 
-        sql += QString(" WHERE p.category_id IN (%1)").arg(placeholders.join(", "));
-        sql += " ORDER BY p.name";
-        if (!query.prepare(sql)) {
-            qWarning() << "PartsModel: prepare failed:" << query.lastError().text();
-            return;
-        }
-        for (const int id : ids)
-            query.addBindValue(id);
-    } else {
-        sql += " ORDER BY p.name";
-        if (!query.prepare(sql)) {
-            qWarning() << "PartsModel: prepare failed:" << query.lastError().text();
-            return;
-        }
+    if (mCategoryFilter > 0) {
+        categoryIds = categoryDescendants(mCategoryFilter);
+        QStringList placeholders(categoryIds.size(), "?");
+        conditions += QString("p.category_id IN (%1)").arg(placeholders.join(", "));
     }
+
+    if (mStorageFilter > 0) {
+        storageIds = storageDescendants(mStorageFilter);
+        QStringList placeholders(storageIds.size(), "?");
+        conditions += QString("p.storage_location_id IN (%1)").arg(placeholders.join(", "));
+    }
+
+    if (!conditions.isEmpty())
+        sql += " WHERE " + conditions.join(" AND ");
+    sql += " ORDER BY p.name";
+
+    if (!query.prepare(sql)) {
+        qWarning() << "PartsModel: prepare failed:" << query.lastError().text();
+        return;
+    }
+    for (const int id : categoryIds)
+        query.addBindValue(id);
+    for (const int id : storageIds)
+        query.addBindValue(id);
 
     qDebug() << "PartsModel: SQL:" << sql;
 

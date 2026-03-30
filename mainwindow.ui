@@ -104,6 +104,7 @@
      <string>&amp;View</string>
     </property>
     <addaction name="actionCategories"/>
+   <addaction name="actionStorageLocations"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuParts"/>
@@ -138,6 +139,40 @@
      </property>
      <item>
       <widget class="QTreeView" name="viewCategories">
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QDockWidget" name="dockStorageLocations">
+   <property name="windowTitle">
+    <string>Storage Locations</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="QWidget" name="dockStorageContents">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QTreeView" name="viewStorageLocations">
        <attribute name="headerVisible">
         <bool>false</bool>
        </attribute>
@@ -215,6 +250,17 @@
   <action name="actionPreferences">
    <property name="text">
     <string>&amp;Preferences...</string>
+   </property>
+  </action>
+  <action name="actionStorageLocations">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Storage Locations</string>
    </property>
   </action>
  </widget>

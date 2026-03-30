@@ -55,6 +55,11 @@ public:
     // Passing any other category id shows parts in that category AND all its descendants.
     void setCategory(int categoryId);
 
+    // Replace the current storage location filter.
+    // Pass -1 or 0 to show all parts regardless of location.
+    // Passing any other id shows parts in that location AND all its descendants.
+    void setStorageLocation(int locationId);
+
     // Force a reload from the database (call after INSERT/UPDATE/DELETE).
     void reload();
 
@@ -71,9 +76,12 @@ public:
 private:
     QString          mConnectionName;
     int              mCategoryFilter = 0;   // 0 → no filter
+    int              mStorageFilter  = 0;   // 0 → no filter
     QList<PartRecord> mParts;
 
     void fetchParts();
     // Returns all descendant category ids for the given root id (inclusive).
     QList<int> categoryDescendants(int rootId) const;
+    // Returns all descendant storage location ids for the given root id (inclusive).
+    QList<int> storageDescendants(int rootId) const;
 };

@@ -22,20 +22,25 @@
 class QLineEdit;
 class QDialogButtonBox;
 
-// Dialog for adding a new storage location (e.g. "Drawer A1", "Shelf C2").
-// On accept, call name() to retrieve the entered value.
+// Dialog for adding a new storage location as a child of a pre-determined parent.
+// The parent is passed at construction time (taken from the current tree selection).
+// The full ancestor path is shown as read-only text.
+// parentId() == -1 means top-level.
 class AddStorageLocationDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AddStorageLocationDialog(QWidget* parent = nullptr);
+    explicit AddStorageLocationDialog(const QString& connectionName, int parentId, QWidget* parent = nullptr);
 
-    QString name() const;
+    QString name()     const;
+    int     parentId() const;
 
 private:
-    QLineEdit*        mNameEdit;
-    QDialogButtonBox* mButtons;
+    int                mParentId;
+    QLineEdit*         mNameEdit;
+    QDialogButtonBox*  mButtons;
 
-    void validate();
+    QString buildPath(const QString& connectionName) const;
+    void    validate();
 };

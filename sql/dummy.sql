@@ -6,19 +6,38 @@
 PRAGMA foreign_keys = ON;
 
 -- -----------------------------------------------------------------------------
--- Storage locations
+-- Storage locations  (hierarchical)
+--   All (0, virtual root)
+--   ├─ Cabinet A  (11) ──  Drawer A1, A2, A3
+--   ├─ Cabinet B  (12) ──  Drawer B1, B2
+--   ├─ Shelf C    (13) ──  Shelf C1, C2
+--   ├─ Reel Boxes (14) ──  Reel Box 1, Reel Box 2
+--   ├─ Loose Bin  (10)
+--   ├─ Workbench  (15) ──  Tray W1, Tray W2  [unused — for grayed-out node test]
+--   └─ Archive    (18)     [unused — for grayed-out node test]
+-- Parts reference leaf ids 1-10; parent container nodes use ids 11-14.
+-- id=0 'All' is seeded by init.sql, not repeated here.
 -- -----------------------------------------------------------------------------
-INSERT OR IGNORE INTO storage_locations (id, name) VALUES
-    ( 1, 'Drawer A1'),
-    ( 2, 'Drawer A2'),
-    ( 3, 'Drawer A3'),
-    ( 4, 'Drawer B1'),
-    ( 5, 'Drawer B2'),
-    ( 6, 'Shelf C1'),
-    ( 7, 'Shelf C2'),
-    ( 8, 'Reel Box 1'),
-    ( 9, 'Reel Box 2'),
-    (10, 'Loose Bin');
+INSERT OR IGNORE INTO storage_locations (id, name, parent_id) VALUES
+    (11, 'Cabinet A',   0),
+    (12, 'Cabinet B',   0),
+    (13, 'Shelf C',     0),
+    (14, 'Reel Boxes',  0),
+    ( 1, 'Drawer A1',  11),
+    ( 2, 'Drawer A2',  11),
+    ( 3, 'Drawer A3',  11),
+    ( 4, 'Drawer B1',  12),
+    ( 5, 'Drawer B2',  12),
+    ( 6, 'Shelf C1',   13),
+    ( 7, 'Shelf C2',   13),
+    ( 8, 'Reel Box 1', 14),
+    ( 9, 'Reel Box 2', 14),
+    (10, 'Loose Bin',   0),
+    -- Unused locations (no parts assigned) — verify grayed-out rendering
+    (15, 'Workbench',   0),
+    (16, 'Tray W1',    15),
+    (17, 'Tray W2',    15),
+    (18, 'Archive',     0);
 
 -- -----------------------------------------------------------------------------
 -- Parts

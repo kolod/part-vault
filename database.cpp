@@ -144,10 +144,14 @@ int DatabaseManager::addPart(const QString& name, int quantity, int categoryId, 
     return q.lastInsertId().toInt();
 }
 
-int DatabaseManager::addStorageLocation(const QString& name) {
+int DatabaseManager::addStorageLocation(const QString& name, int parentId) {
     QSqlQuery q(mDatabase);
-    q.prepare("INSERT INTO storage_locations (name) VALUES (?)");
+    q.prepare("INSERT INTO storage_locations (name, parent_id) VALUES (?, ?)");
     q.addBindValue(name);
+    if (parentId < 0)
+        q.addBindValue(QVariant(QMetaType::fromType<int>()));
+    else
+        q.addBindValue(parentId);
     if (!q.exec()) {
         qWarning() << "addStorageLocation failed:" << q.lastError().text();
         return -1;

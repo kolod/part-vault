@@ -11,9 +11,12 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 -- Physical storage locations where parts are kept (e.g. "Shelf A3", "Drawer 12").
+-- Hierarchical: a location can have sub-locations (e.g. Cabinet → Drawer → Compartment).
+-- parent_id is NULL for top-level locations; deleting a parent sets children's parent_id to NULL.
 CREATE TABLE IF NOT EXISTS storage_locations (
     id                      INTEGER PRIMARY KEY,
-    name                    TEXT NOT NULL
+    name                    TEXT NOT NULL,
+    parent_id               INTEGER REFERENCES storage_locations(id) ON DELETE SET NULL
 );
 
 -- Core parts table.
@@ -53,6 +56,10 @@ CREATE TABLE IF NOT EXISTS part_files (
 
 -- Seed data: default component categories (mirrors Mouser top-level taxonomy).
 -- INSERT OR IGNORE ensures re-running init never duplicates rows.
+INSERT OR IGNORE INTO storage_locations (id, name, parent_id) VALUES
+    -- Virtual root — allows tree views to show every location under one node.
+    (0, 'All', NULL);
+
 INSERT OR IGNORE INTO categories (id, name, parent_id) VALUES
     -- Virtual root — allows tree views to show every category under one node.
     (  0, 'All',                            NULL),
