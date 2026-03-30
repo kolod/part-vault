@@ -27,12 +27,12 @@
 #include <QPushButton>
 
 AddCategoryDialog::AddCategoryDialog(const QString& connectionName, int parentId, QWidget* parent)
-    : QDialog(parent), m_parentId(parentId)
+    : QDialog(parent), mParentId(parentId)
 {
     setWindowTitle(tr("Add Category"));
     setMinimumWidth(360);
 
-    m_nameEdit = new QLineEdit(this);
+    mNameEdit = new QLineEdit(this);
 
     const QString path = buildPath(connectionName);
     auto* pathLabel = new QLabel(path.isEmpty() ? tr("(top level)") : path, this);
@@ -40,39 +40,39 @@ AddCategoryDialog::AddCategoryDialog(const QString& connectionName, int parentId
 
     auto* form = new QFormLayout;
     form->addRow(tr("Parent:"), pathLabel);
-    form->addRow(tr("Name:"),   m_nameEdit);
+    form->addRow(tr("Name:"),   mNameEdit);
 
-    m_buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    m_buttons->button(QDialogButtonBox::Ok)->setEnabled(false);
+    mButtons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    mButtons->button(QDialogButtonBox::Ok)->setEnabled(false);
 
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->addLayout(form);
-    mainLayout->addWidget(m_buttons);
+    mainLayout->addWidget(mButtons);
 
-    connect(m_nameEdit, &QLineEdit::textChanged, this, &AddCategoryDialog::validate);
-    connect(m_buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(m_buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(mNameEdit, &QLineEdit::textChanged, this, &AddCategoryDialog::validate);
+    connect(mButtons, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(mButtons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 QString AddCategoryDialog::name() const {
-    return m_nameEdit->text().trimmed();
+    return mNameEdit->text().trimmed();
 }
 
 int AddCategoryDialog::parentId() const {
-    return m_parentId;
+    return mParentId;
 }
 
 // ── private ──────────────────────────────────────────────────────────────────
 
-// Walk parent_id up from m_parentId and build "Root → Child → …" display string.
+// Walk parent_id up from mParentId and build "Root → Child → …" display string.
 QString AddCategoryDialog::buildPath(const QString& connectionName) const {
-    if (m_parentId <= 0) return {};
+    if (mParentId <= 0) return {};
 
     QSqlDatabase db = QSqlDatabase::database(connectionName);
     QSqlQuery q(db);
 
     QStringList parts;
-    int current = m_parentId;
+    int current = mParentId;
     while (current > 0) {
         q.prepare("SELECT name, parent_id FROM categories WHERE id = ?");
         q.addBindValue(current);
@@ -87,5 +87,5 @@ QString AddCategoryDialog::buildPath(const QString& connectionName) const {
 }
 
 void AddCategoryDialog::validate() {
-    m_buttons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());
+    mButtons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());
 }

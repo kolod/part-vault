@@ -41,11 +41,11 @@ public:
     int     locationId() const;   // -1 → no location
 
 private:
-    QLineEdit*        m_nameEdit;
-    QSpinBox*         m_quantitySpin;
-    QComboBox*        m_categoryCombo;
-    QComboBox*        m_locationCombo;
-    QDialogButtonBox* m_buttons;
+    QLineEdit*        mNameEdit;
+    QSpinBox*         mQuantitySpin;
+    QComboBox*        mCategoryCombo;
+    QComboBox*        mLocationCombo;
+    QDialogButtonBox* mButtons;
 
     void populateCategories(const QString& connectionName);
     void populateLocations(const QString& connectionName);

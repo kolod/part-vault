@@ -16,6 +16,7 @@
 
 #include "categorytreemodel.h"
 
+#include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
@@ -25,21 +26,21 @@
 #include <QApplication>
 #include <QTreeView>
 
-CategoryTreeModel::CategoryTreeModel(QSqlDatabase& db, QObject* parent)
-    : QAbstractItemModel(parent), m_db(db)
+CategoryTreeModel::CategoryTreeModel(const QString& connectionName, QObject* parent)
+    : QAbstractItemModel(parent), mConnectionName(connectionName)
 {
-    m_root = new CategoryNode{-1, QString{}};
+    mRoot = new CategoryNode{-1, QString{}};
     buildTree();
 }
 
 CategoryTreeModel::~CategoryTreeModel() {
-    delete m_root;
+    delete mRoot;
 }
 
 void CategoryTreeModel::reload() {
     beginResetModel();
-    delete m_root;
-    m_root = new CategoryNode{-1, QString{}};
+    delete mRoot;
+    mRoot = new CategoryNode{-1, QString{}};
     buildTree();
     endResetModel();
 }
@@ -73,7 +74,8 @@ void CategoryTreeModel::buildTree() {
     // Load every category row into a flat map keyed by id.
     QHash<int, CategoryNode*> nodeMap;
 
-    QSqlQuery query(m_db);
+    QSqlDatabase db = QSqlDatabase::database(mConnectionName);
+    QSqlQuery query(db);
     query.prepare("SELECT id, name, parent_id FROM categories ORDER BY name");
     if (!query.exec()) {
         qWarning() << "CategoryTreeModel: query failed:" << query.lastError().text();
@@ -104,8 +106,8 @@ void CategoryTreeModel::buildTree() {
             node->parent = parentNode;
             parentNode->children.append(node);
         } else {
-            node->parent = m_root;
-            m_root->children.append(node);
+            node->parent = mRoot;
+            mRoot->children.append(node);
         }
     }
 
@@ -117,7 +119,8 @@ void CategoryTreeModel::buildTree() {
 void CategoryTreeModel::markActiveNodes() {
     // Collect the set of category IDs that have at least one part directly.
     QSet<int> directlyUsed;
-    QSqlQuery q(m_db);
+    QSqlDatabase db = QSqlDatabase::database(mConnectionName);
+    QSqlQuery q(db);
     q.prepare("SELECT DISTINCT category_id FROM parts WHERE category_id IS NOT NULL");
     if (q.exec()) {
         while (q.next())
@@ -128,7 +131,7 @@ void CategoryTreeModel::markActiveNodes() {
     // nodes on the path as active (so parents of used categories are also highlighted).
     // Build a flat id→node map by traversing the tree we just built.
     QHash<int, CategoryNode*> nodeMap;
-    QList<CategoryNode*> stack = m_root->children;
+    QList<CategoryNode*> stack = mRoot->children;
     while (!stack.isEmpty()) {
         CategoryNode* n = stack.takeFirst();
         nodeMap.insert(n->id, n);
@@ -137,7 +140,7 @@ void CategoryTreeModel::markActiveNodes() {
 
     for (int id : std::as_const(directlyUsed)) {
         CategoryNode* node = nodeMap.value(id, nullptr);
-        while (node && node != m_root) {
+        while (node && node != mRoot) {
             if (node->active) break;   // already marked — ancestors are marked too
             node->active = true;
             node = node->parent;
@@ -147,7 +150,7 @@ void CategoryTreeModel::markActiveNodes() {
 
 CategoryNode* CategoryTreeModel::nodeFromIndex(const QModelIndex& index) const {
     if (!index.isValid())
-        return m_root;
+        return mRoot;
     return static_cast<CategoryNode*>(index.internalPointer());
 }
 
@@ -159,8 +162,8 @@ int CategoryTreeModel::categoryId(const QModelIndex& index) const {
 QModelIndex CategoryTreeModel::indexForId(int id) const {
     // BFS over the whole tree
     QList<QPair<CategoryNode*, QModelIndex>> queue;
-    for (int r = 0; r < m_root->children.size(); ++r)
-        queue.append({m_root->children.at(r), index(r, 0)});
+    for (int r = 0; r < mRoot->children.size(); ++r)
+        queue.append({mRoot->children.at(r), index(r, 0)});
 
     while (!queue.isEmpty()) {
         auto [node, idx] = queue.takeFirst();
@@ -192,10 +195,10 @@ QModelIndex CategoryTreeModel::parent(const QModelIndex& child) const {
     CategoryNode* node       = nodeFromIndex(child);
     CategoryNode* parentNode = node->parent;
 
-    if (!parentNode || parentNode == m_root)
+    if (!parentNode || parentNode == mRoot)
         return {};
 
-    CategoryNode* grandParent = parentNode->parent ? parentNode->parent : m_root;
+    CategoryNode* grandParent = parentNode->parent ? parentNode->parent : mRoot;
     const int row = grandParent->children.indexOf(parentNode);
     if (row < 0) return {};
 

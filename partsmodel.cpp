@@ -22,16 +22,16 @@
 #include <QDebug>
 
 PartsModel::PartsModel(const QString& connectionName, QObject* parent)
-    : QAbstractTableModel(parent), m_connectionName(connectionName)
+    : QAbstractTableModel(parent), mConnectionName(connectionName)
 {
     fetchParts();
 }
 
 void PartsModel::setCategory(int categoryId)
 {
-    if (m_categoryFilter == categoryId) return;
-    qDebug() << "PartsModel: category filter changed" << m_categoryFilter << "->" << categoryId;
-    m_categoryFilter = categoryId;
+    if (mCategoryFilter == categoryId) return;
+    qDebug() << "PartsModel: category filter changed" << mCategoryFilter << "->" << categoryId;
+    mCategoryFilter = categoryId;
     reload();
 }
 
@@ -44,15 +44,15 @@ void PartsModel::reload()
 
 int PartsModel::partId(int row) const
 {
-    if (row < 0 || row >= m_parts.size()) return -1;
-    return m_parts.at(row).id;
+    if (row < 0 || row >= mParts.size()) return -1;
+    return mParts.at(row).id;
 }
 
 // ── data loading ─────────────────────────────────────────────────────────────
 
 QList<int> PartsModel::categoryDescendants(int rootId) const
 {
-    QSqlDatabase db = QSqlDatabase::database(m_connectionName);
+    QSqlDatabase db = QSqlDatabase::database(mConnectionName);
     QList<int> result;
     QList<int> queue = {rootId};
 
@@ -76,14 +76,14 @@ QList<int> PartsModel::categoryDescendants(int rootId) const
 
 void PartsModel::fetchParts()
 {
-    m_parts.clear();
+    mParts.clear();
 
-    QSqlDatabase db = QSqlDatabase::database(m_connectionName);
+    QSqlDatabase db = QSqlDatabase::database(mConnectionName);
     if (!db.isOpen()) {
-        qWarning() << "PartsModel: database not open (connection:" << m_connectionName << ")";
+        qWarning() << "PartsModel: database not open (connection:" << mConnectionName << ")";
         return;
     }
-    qDebug() << "PartsModel: fetching parts, category filter =" << m_categoryFilter;
+    qDebug() << "PartsModel: fetching parts, category filter =" << mCategoryFilter;
 
     // Fetch all columns needed to populate PartRecord.
     // p.id, p.name, p.quantity — core part fields.
@@ -99,8 +99,8 @@ void PartsModel::fetchParts()
     QSqlQuery query(db);
     query.setForwardOnly(true);
 
-    if (m_categoryFilter > 0) {
-        const QList<int> ids = categoryDescendants(m_categoryFilter);
+    if (mCategoryFilter > 0) {
+        const QList<int> ids = categoryDescendants(mCategoryFilter);
         QStringList placeholders(ids.size(), "?");
 
         sql += QString(" WHERE p.category_id IN (%1)").arg(placeholders.join(", "));
@@ -127,7 +127,7 @@ void PartsModel::fetchParts()
     }
 
     while (query.next()) {
-        m_parts.append({
+        mParts.append({
             query.value(0).toInt(),
             query.value(1).toString(),
             query.value(2).toInt(),
@@ -136,7 +136,7 @@ void PartsModel::fetchParts()
         });
     }
 
-    qDebug() << "PartsModel: loaded" << m_parts.size() << "parts";
+    qDebug() << "PartsModel: loaded" << mParts.size() << "parts";
 }
 
 // ── QAbstractTableModel ───────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ void PartsModel::fetchParts()
 int PartsModel::rowCount(const QModelIndex& parent) const
 {
     if (parent.isValid()) return 0;
-    return m_parts.size();
+    return mParts.size();
 }
 
 int PartsModel::columnCount(const QModelIndex& parent) const
@@ -155,10 +155,10 @@ int PartsModel::columnCount(const QModelIndex& parent) const
 
 QVariant PartsModel::data(const QModelIndex& index, int role) const
 {
-    if (!index.isValid() || index.row() >= m_parts.size())
+    if (!index.isValid() || index.row() >= mParts.size())
         return {};
 
-    const PartRecord& p = m_parts.at(index.row());
+    const PartRecord& p = mParts.at(index.row());
 
     if (role == IdRole)
         return p.id;

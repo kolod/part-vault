@@ -28,29 +28,29 @@ AddStorageLocationDialog::AddStorageLocationDialog(QWidget* parent)
     setWindowTitle(tr("Add Storage Location"));
     setMinimumWidth(280);
 
-    m_nameEdit = new QLineEdit(this);
-    m_buttons  = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    mNameEdit = new QLineEdit(this);
+    mButtons  = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
 
     auto* form = new QFormLayout;
-    form->addRow(tr("Name:"), m_nameEdit);
+    form->addRow(tr("Name:"), mNameEdit);
 
     auto* layout = new QVBoxLayout(this);
     layout->addLayout(form);
-    layout->addWidget(m_buttons);
+    layout->addWidget(mButtons);
 
     validate();
 
-    connect(m_nameEdit, &QLineEdit::textChanged, this, &AddStorageLocationDialog::validate);
-    connect(m_buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(m_buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(mNameEdit, &QLineEdit::textChanged, this, &AddStorageLocationDialog::validate);
+    connect(mButtons, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(mButtons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 QString AddStorageLocationDialog::name() const
 {
-    return m_nameEdit->text().trimmed();
+    return mNameEdit->text().trimmed();
 }
 
 void AddStorageLocationDialog::validate()
 {
-    m_buttons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());
+    mButtons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());
 }

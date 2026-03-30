@@ -17,7 +17,6 @@
 #pragma once
 
 #include <QAbstractItemModel>
-#include <QSqlDatabase>
 #include <QString>
 #include <QList>
 #include <QSet>
@@ -46,7 +45,7 @@ public:
         IdRole = Qt::UserRole + 1
     };
 
-    explicit CategoryTreeModel(QSqlDatabase& db, QObject* parent = nullptr);
+    explicit CategoryTreeModel(const QString& connectionName, QObject* parent = nullptr);
     ~CategoryTreeModel() override;
 
     // Reloads the entire tree from the database.
@@ -71,8 +70,8 @@ public:
     Qt::ItemFlags flags(const QModelIndex& index) const override;
 
 private:
-    QSqlDatabase&  m_db;
-    CategoryNode*  m_root = nullptr;   // invisible root; its children are top-level categories
+    QString        mConnectionName;
+    CategoryNode*  mRoot = nullptr;   // invisible root; its children are top-level categories
 
     void buildTree();
     void markActiveNodes();

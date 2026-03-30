@@ -37,8 +37,8 @@ public:
     int  addStorageLocation(const QString& name);
 
 private:
-    QSqlDatabase m_database;
-    QString m_dbPath;
+    QSqlDatabase mDatabase;
+    QString mDbPath;
 
     bool executeScript(const QString& path);
     bool initializeDatabase();

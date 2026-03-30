@@ -34,8 +34,8 @@ public:
     QString name() const;
 
 private:
-    QLineEdit*        m_nameEdit;
-    QDialogButtonBox* m_buttons;
+    QLineEdit*        mNameEdit;
+    QDialogButtonBox* mButtons;
 
     void validate();
 };

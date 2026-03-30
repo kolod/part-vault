@@ -32,57 +32,57 @@ AddPartDialog::AddPartDialog(const QString& connectionName, QWidget* parent)
     setWindowTitle(tr("Add Part"));
     setMinimumWidth(360);
 
-    m_nameEdit      = new QLineEdit(this);
-    m_quantitySpin  = new QSpinBox(this);
-    m_categoryCombo = new QComboBox(this);
-    m_locationCombo = new QComboBox(this);
-    m_buttons       = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    mNameEdit      = new QLineEdit(this);
+    mQuantitySpin  = new QSpinBox(this);
+    mCategoryCombo = new QComboBox(this);
+    mLocationCombo = new QComboBox(this);
+    mButtons       = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
 
-    m_quantitySpin->setRange(0, 999999);
-    m_quantitySpin->setValue(1);
+    mQuantitySpin->setRange(0, 999999);
+    mQuantitySpin->setValue(1);
 
     auto* form = new QFormLayout;
-    form->addRow(tr("Name:"),             m_nameEdit);
-    form->addRow(tr("Quantity:"),         m_quantitySpin);
-    form->addRow(tr("Category:"),         m_categoryCombo);
-    form->addRow(tr("Storage location:"), m_locationCombo);
+    form->addRow(tr("Name:"),             mNameEdit);
+    form->addRow(tr("Quantity:"),         mQuantitySpin);
+    form->addRow(tr("Category:"),         mCategoryCombo);
+    form->addRow(tr("Storage location:"), mLocationCombo);
 
     auto* layout = new QVBoxLayout(this);
     layout->addLayout(form);
-    layout->addWidget(m_buttons);
+    layout->addWidget(mButtons);
 
     populateCategories(connectionName);
     populateLocations(connectionName);
     validate();
 
-    connect(m_nameEdit, &QLineEdit::textChanged, this, &AddPartDialog::validate);
-    connect(m_buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(m_buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(mNameEdit, &QLineEdit::textChanged, this, &AddPartDialog::validate);
+    connect(mButtons, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(mButtons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 QString AddPartDialog::name() const
 {
-    return m_nameEdit->text().trimmed();
+    return mNameEdit->text().trimmed();
 }
 
 int AddPartDialog::quantity() const
 {
-    return m_quantitySpin->value();
+    return mQuantitySpin->value();
 }
 
 int AddPartDialog::categoryId() const
 {
-    return m_categoryCombo->currentData().toInt();
+    return mCategoryCombo->currentData().toInt();
 }
 
 int AddPartDialog::locationId() const
 {
-    return m_locationCombo->currentData().toInt();
+    return mLocationCombo->currentData().toInt();
 }
 
 void AddPartDialog::populateCategories(const QString& connectionName)
 {
-    m_categoryCombo->addItem(tr("(none)"), -1);
+    mCategoryCombo->addItem(tr("(none)"), -1);
 
     QSqlDatabase db = QSqlDatabase::database(connectionName);
     QSqlQuery query(db);
@@ -91,12 +91,12 @@ void AddPartDialog::populateCategories(const QString& connectionName)
     if (!query.exec()) return;
 
     while (query.next())
-        m_categoryCombo->addItem(query.value(1).toString(), query.value(0).toInt());
+        mCategoryCombo->addItem(query.value(1).toString(), query.value(0).toInt());
 }
 
 void AddPartDialog::populateLocations(const QString& connectionName)
 {
-    m_locationCombo->addItem(tr("(none)"), -1);
+    mLocationCombo->addItem(tr("(none)"), -1);
 
     QSqlDatabase db = QSqlDatabase::database(connectionName);
     QSqlQuery query(db);
@@ -104,10 +104,10 @@ void AddPartDialog::populateLocations(const QString& connectionName)
     if (!query.exec()) return;
 
     while (query.next())
-        m_locationCombo->addItem(query.value(1).toString(), query.value(0).toInt());
+        mLocationCombo->addItem(query.value(1).toString(), query.value(0).toInt());
 }
 
 void AddPartDialog::validate()
 {
-    m_buttons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());
+    mButtons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());
 }

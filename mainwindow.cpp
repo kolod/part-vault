@@ -37,7 +37,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Create models
     mPartsModel = new PartsModel(conn, this);
-    mCategoryModel = new CategoryTreeModel(mDatabaseManager.database(), this);
+    mCategoryModel = new CategoryTreeModel(conn, this);
 
     // Category tree view
     ui->viewCategories->setModel(mCategoryModel);

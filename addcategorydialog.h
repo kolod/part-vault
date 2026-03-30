@@ -38,9 +38,9 @@ public:
     int     parentId() const;   // the id passed at construction
 
 private:
-    int                m_parentId;
-    QLineEdit*         m_nameEdit;
-    QDialogButtonBox*  m_buttons;
+    int                mParentId;
+    QLineEdit*         mNameEdit;
+    QDialogButtonBox*  mButtons;
 
     QString buildPath(const QString& connectionName) const;
     void    validate();

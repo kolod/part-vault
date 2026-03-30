@@ -67,9 +67,9 @@ public:
     Qt::ItemFlags flags (const QModelIndex& index) const override;
 
 private:
-    QString          m_connectionName;
-    int              m_categoryFilter = 0;   // 0 → no filter
-    QList<PartRecord> m_parts;
+    QString          mConnectionName;
+    int              mCategoryFilter = 0;   // 0 → no filter
+    QList<PartRecord> mParts;
 
     void fetchParts();
     // Returns all descendant category ids for the given root id (inclusive).

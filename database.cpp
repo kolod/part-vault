@@ -19,9 +19,9 @@
 #include <QFile>
 #include <QDebug>
 
-DatabaseManager::DatabaseManager(const QString& dbPath) : m_dbPath(dbPath) {
-    m_database = QSqlDatabase::addDatabase("QSQLITE");
-    m_database.setDatabaseName(m_dbPath);
+DatabaseManager::DatabaseManager(const QString& dbPath) : mDbPath(dbPath) {
+    mDatabase = QSqlDatabase::addDatabase("QSQLITE");
+    mDatabase.setDatabaseName(mDbPath);
 }
 
 DatabaseManager::~DatabaseManager() {
@@ -30,8 +30,8 @@ DatabaseManager::~DatabaseManager() {
 
 bool DatabaseManager::openDatabase() {
     // Check if the database file exists; if not, it will be created when we open it
-    if (!m_database.open()) {
-        qWarning() << "Failed to open database:" << m_database.lastError().text();
+    if (!mDatabase.open()) {
+        qWarning() << "Failed to open database:" << mDatabase.lastError().text();
         return false;
     }
 
@@ -47,11 +47,11 @@ bool DatabaseManager::openDatabase() {
 }
 
 void DatabaseManager::closeDatabase() {
-    if (m_database.isOpen()) m_database.close();
+    if (mDatabase.isOpen()) mDatabase.close();
 }
 
 QSqlDatabase& DatabaseManager::database() {
-    return m_database;
+    return mDatabase;
 }
 
 bool DatabaseManager::executeScript(const QString& path) {
@@ -71,7 +71,7 @@ bool DatabaseManager::executeScript(const QString& path) {
 
     // Execute the SQL script to initialize the database schema.
     // QSqlQuery::exec() handles one statement at a time, so split on ';
-    QSqlQuery query(m_database);
+    QSqlQuery query(mDatabase);
     const QStringList statements = cleanedSql.split(QLatin1Char(';'), Qt::SkipEmptyParts);
     for (const QString& statement : statements) {
 
@@ -110,7 +110,7 @@ bool DatabaseManager::addDummyData() {
 }
 
 int DatabaseManager::addCategory(const QString& name, int parentId) {
-    QSqlQuery q(m_database);
+    QSqlQuery q(mDatabase);
     q.prepare("INSERT INTO categories (name, parent_id) VALUES (?, ?)");
     q.addBindValue(name);
     if (parentId < 0)
@@ -125,7 +125,7 @@ int DatabaseManager::addCategory(const QString& name, int parentId) {
 }
 
 int DatabaseManager::addPart(const QString& name, int quantity, int categoryId, int locationId) {
-    QSqlQuery q(m_database);
+    QSqlQuery q(mDatabase);
     q.prepare("INSERT INTO parts (name, quantity, category_id, storage_location_id) VALUES (?, ?, ?, ?)");
     q.addBindValue(name);
     q.addBindValue(quantity);
@@ -145,7 +145,7 @@ int DatabaseManager::addPart(const QString& name, int quantity, int categoryId, 
 }
 
 int DatabaseManager::addStorageLocation(const QString& name) {
-    QSqlQuery q(m_database);
+    QSqlQuery q(mDatabase);
     q.prepare("INSERT INTO storage_locations (name) VALUES (?)");
     q.addBindValue(name);
     if (!q.exec()) {
@@ -159,8 +159,8 @@ bool DatabaseManager::resetDatabase() {
     closeDatabase();
 
     // Delete the physical file so the next open starts from scratch
-    if (QFile::exists(m_dbPath) && !QFile::remove(m_dbPath)) {
-        qCritical() << "resetDatabase: could not delete" << m_dbPath;
+    if (QFile::exists(mDbPath) && !QFile::remove(mDbPath)) {
+        qCritical() << "resetDatabase: could not delete" << mDbPath;
         return false;
     }
 

@@ -62,7 +62,7 @@
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>File</string>
+     <string>&amp;File</string>
     </property>
     <addaction name="actionExport"/>
     <addaction name="actionImport"/>
@@ -73,35 +73,35 @@
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
-     <string>Help</string>
+     <string>&amp;Help</string>
     </property>
     <addaction name="actionAbout"/>
     <addaction name="actionAboutQt"/>
    </widget>
    <widget class="QMenu" name="menuParts">
     <property name="title">
-     <string>Parts</string>
+     <string>&amp;Parts</string>
     </property>
     <addaction name="actionAddPart"/>
     <addaction name="actionRemovePart"/>
    </widget>
    <widget class="QMenu" name="menuCategories">
     <property name="title">
-     <string>Categories</string>
+     <string>&amp;Categories</string>
     </property>
     <addaction name="actionAddCategory"/>
     <addaction name="actionRemoveUnusedCategories"/>
    </widget>
    <widget class="QMenu" name="menuPlaces">
     <property name="title">
-     <string>Places</string>
+     <string>P&amp;laces</string>
     </property>
     <addaction name="actionAddSorageLocation"/>
     <addaction name="actionRemoveUnusedStorageLocations"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
-     <string>View</string>
+     <string>&amp;View</string>
     </property>
     <addaction name="actionCategories"/>
    </widget>
@@ -148,57 +148,57 @@
   </widget>
   <action name="actionAbout">
    <property name="text">
-    <string>About...</string>
+    <string>&amp;About...</string>
    </property>
   </action>
   <action name="actionAboutQt">
    <property name="text">
-    <string>About Qt...</string>
+    <string>About &amp;Qt...</string>
    </property>
   </action>
   <action name="actionAddPart">
    <property name="text">
-    <string>Add part...</string>
+    <string>&amp;Add part...</string>
    </property>
   </action>
   <action name="actionRemovePart">
    <property name="text">
-    <string>Remove part</string>
+    <string>&amp;Remove part</string>
    </property>
   </action>
   <action name="actionAddCategory">
    <property name="text">
-    <string>Add category...</string>
+    <string>&amp;Add category...</string>
    </property>
   </action>
   <action name="actionRemoveUnusedCategories">
    <property name="text">
-    <string>Remove unused</string>
+    <string>&amp;Remove unused</string>
    </property>
   </action>
   <action name="actionAddSorageLocation">
    <property name="text">
-    <string>Add place</string>
+    <string>&amp;Add place</string>
    </property>
   </action>
   <action name="actionRemoveUnusedStorageLocations">
    <property name="text">
-    <string>Remove unused</string>
+    <string>&amp;Remove unused</string>
    </property>
   </action>
   <action name="actionExport">
    <property name="text">
-    <string>Export...</string>
+    <string>&amp;Export...</string>
    </property>
   </action>
   <action name="actionImport">
    <property name="text">
-    <string>Import...</string>
+    <string>&amp;Import...</string>
    </property>
   </action>
   <action name="actionExit">
    <property name="text">
-    <string>Exit</string>
+    <string>E&amp;xit</string>
    </property>
   </action>
   <action name="actionCategories">
@@ -209,12 +209,12 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Categories</string>
+    <string>&amp;Categories</string>
    </property>
   </action>
   <action name="actionPreferences">
    <property name="text">
-    <string>Preferences...</string>
+    <string>&amp;Preferences...</string>
    </property>
   </action>
  </widget>

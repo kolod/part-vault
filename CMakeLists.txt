@@ -40,6 +40,8 @@ qt_add_resources(PartVault "sql"
 qt_add_translations(
     TARGETS PartVault
     TS_FILES PartVault_uk.ts
+    LUPDATE_TARGET update_translations
+    SOURCE_TARGETS PartVault
 )
 
 target_link_libraries(PartVault
