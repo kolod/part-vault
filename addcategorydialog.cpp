@@ -32,11 +32,9 @@ AddCategoryDialog::AddCategoryDialog(const QString& connectionName, QWidget* par
     m_cascadeLayout->setSpacing(4);
 
     m_backButton      = new QPushButton(tr("\u2190 Back"), this);
-    m_addSubcatButton = new QPushButton(tr("New subcategory\u2026"), this);
 
     auto* btnRow = new QHBoxLayout;
     btnRow->addWidget(m_backButton);
-    btnRow->addWidget(m_addSubcatButton);
     btnRow->addStretch();
 
     m_buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -52,7 +50,6 @@ AddCategoryDialog::AddCategoryDialog(const QString& connectionName, QWidget* par
     addCascadeLevel(0);
 
     connect(m_backButton,      &QPushButton::clicked,       this, &AddCategoryDialog::removeCascadeLevel);
-    connect(m_addSubcatButton, &QPushButton::clicked,       this, &AddCategoryDialog::onAddSubcategoryClicked);
     connect(m_nameEdit,        &QLineEdit::textChanged,     this, &AddCategoryDialog::validate);
     connect(m_buttons,         &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(m_buttons,         &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -138,45 +135,44 @@ void AddCategoryDialog::onComboChanged(QComboBox* combo)
         validate();
 }
 
-void AddCategoryDialog::onAddSubcategoryClicked()
-{
-    const int pid = parentId();
-    if (pid <= 0) return;
-
-    bool ok = false;
-    const QString newName = QInputDialog::getText(
-        this, tr("New Subcategory"), tr("Name:"), QLineEdit::Normal, QString(), &ok);
-    if (!ok || newName.trimmed().isEmpty()) return;
-
-    QSqlDatabase db = QSqlDatabase::database(m_connectionName);
-    QSqlQuery q(db);
-    q.prepare("INSERT INTO categories (name, parent_id) VALUES (?, ?)");
-    q.addBindValue(newName.trimmed());
-    q.addBindValue(pid);
-    if (!q.exec()) {
-        qWarning() << "AddCategoryDialog: new subcategory insert failed:" << q.lastError().text();
-        return;
-    }
-    const int newId = q.lastInsertId().toInt();
-
-    // Add a level showing children of pid (which now includes the new one)
-    addCascadeLevel(pid);
-
-    // Auto-select the new item so the user can continue drilling down
-    QComboBox* newCombo = m_combos.last();
-    for (int i = 0; i < newCombo->count(); ++i) {
-        if (newCombo->itemData(i).toInt() == newId) {
-            newCombo->setCurrentIndex(i);
-            break;
-        }
-    }
-}
-
 void AddCategoryDialog::validate()
 {
+    const int pid = parentId();
     const bool nameOk   = !name().isEmpty();
-    const bool parentOk = parentId() > 0;
+    const bool parentOk = pid > 0 && !hasChildren(pid);
     m_buttons->button(QDialogButtonBox::Ok)->setEnabled(nameOk && parentOk);
     m_backButton->setEnabled(m_combos.size() > 1);
-    m_addSubcatButton->setEnabled(parentId() > 0);
+}
+
+void AddCategoryDialog::setCategory(int categoryId)
+{
+    if (categoryId <= 0) return;
+
+    // Build the path from categoryId up to the top level.
+    // Top-level categories have parent_id = 0; stop when we reach 0 or NULL.
+    QList<int> path;
+    QSqlDatabase db = QSqlDatabase::database(m_connectionName);
+    QSqlQuery q(db);
+    int current = categoryId;
+    while (current > 0) {
+        path.prepend(current);
+        q.prepare("SELECT parent_id FROM categories WHERE id = ?");
+        q.addBindValue(current);
+        if (!q.exec() || !q.next()) return;   // categoryId not found
+        current = q.value(0).isNull() ? 0 : q.value(0).toInt();
+    }
+
+    // Replay the path through the cascade combos.
+    // Setting combo[i] to path[i] fires onComboChanged, which appends combo[i+1]
+    // loaded with the children of path[i], ready for the next iteration.
+    for (int i = 0; i < path.size(); ++i) {
+        if (i >= m_combos.size()) break;
+        QComboBox* combo = m_combos.at(i);
+        for (int j = 0; j < combo->count(); ++j) {
+            if (combo->itemData(j).toInt() == path.at(i)) {
+                combo->setCurrentIndex(j);
+                break;
+            }
+        }
+    }
 }

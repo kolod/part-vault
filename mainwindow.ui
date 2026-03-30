@@ -137,7 +137,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QTreeView" name="treeView">
+      <widget class="QTreeView" name="viewCategories">
        <attribute name="headerVisible">
         <bool>false</bool>
        </attribute>

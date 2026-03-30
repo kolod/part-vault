@@ -34,7 +34,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Category tree
     m_categoryModel = new CategoryTreeModel(m_databaseManager.database(), this);
-    ui->treeView->setModel(m_categoryModel);
+    ui->viewCategories->setModel(m_categoryModel);
 
     // Parts table
     const QString conn = m_databaseManager.database().connectionName();
@@ -78,7 +78,11 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     // Add Category action
     connect(ui->actionAddCategory, &QAction::triggered, this, [this]() {
         const QString conn = m_databaseManager.database().connectionName();
+        auto index = ui->viewCategories->currentIndex();
+        auto categoryId = m_categoryModel->categoryId(index);
+
         AddCategoryDialog dlg(conn, this);
+        dlg.setCategory(categoryId);
         if (dlg.exec() != QDialog::Accepted) return;
 
         if (m_databaseManager.addCategory(dlg.name(), dlg.parentId()) >= 0)
@@ -129,7 +133,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     });
 
     // Filter by category when a category is selected in the tree view
-    connect( ui->treeView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
+    connect( ui->viewCategories->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
         m_partsModel->setCategory(m_categoryModel->categoryId(current));
     });
 }

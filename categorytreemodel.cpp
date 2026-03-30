@@ -195,8 +195,5 @@ QVariant CategoryTreeModel::headerData(int section, Qt::Orientation orientation,
 
 Qt::ItemFlags CategoryTreeModel::flags(const QModelIndex& index) const {
     if (!index.isValid()) return Qt::NoItemFlags;
-    CategoryNode* node = nodeFromIndex(index);
-    if (!node->active)
-        return Qt::NoItemFlags;
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }

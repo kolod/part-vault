@@ -45,13 +45,16 @@ public:
     QString name()     const;
     int     parentId() const;   // > 0 when accepted
 
+    // Pre-selects the cascade path to categoryId before exec() is called.
+    // Does nothing if categoryId <= 0 or not found in the DB.
+    void setCategory(int categoryId);
+
 private:
     QString            m_connectionName;
     QLineEdit*         m_nameEdit;
     QVBoxLayout*       m_cascadeLayout;
     QList<QComboBox*>  m_combos;
     QPushButton*       m_backButton;
-    QPushButton*       m_addSubcatButton;
     QDialogButtonBox*  m_buttons;
 
     void addCascadeLevel(int parentId);
@@ -59,6 +62,5 @@ private:
     bool hasChildren(int categoryId) const;
     void loadChildren(int parentId, QComboBox* combo);
     void onComboChanged(QComboBox* combo);
-    void onAddSubcategoryClicked();
     void validate();
 };
