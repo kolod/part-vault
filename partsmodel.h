@@ -27,6 +27,7 @@ struct PartRecord
     int     quantity;
     QString categoryName;
     QString locationName;
+    QString lastChange;
 };
 
 class PartsModel : public QAbstractTableModel
@@ -35,11 +36,12 @@ class PartsModel : public QAbstractTableModel
 
 public:
     enum Column {
-        ColName     = 0,
-        ColQuantity = 1,
-        ColCategory = 2,
-        ColLocation = 3,
-        ColCount    = 4
+        ColName       = 0,
+        ColQuantity   = 1,
+        ColCategory   = 2,
+        ColLocation   = 3,
+        ColLastChange = 4,
+        ColCount      = 5
     };
 
     enum Roles {

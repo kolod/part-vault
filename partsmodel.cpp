@@ -91,7 +91,7 @@ void PartsModel::fetchParts()
     // sl.name — resolved via LEFT JOIN so parts with no storage location return an empty string.
     // A WHERE clause is appended below when a category filter is active.
     QString sql =
-        "SELECT p.id, p.name, p.quantity, COALESCE(c.name, ''), COALESCE(s.name, '') "
+        "SELECT p.id, p.name, p.quantity, COALESCE(c.name, ''), COALESCE(s.name, ''), p.last_change "
         "FROM parts AS p "
         "LEFT JOIN categories        AS c ON c.id = p.category_id "
         "LEFT JOIN storage_locations AS s ON s.id = p.storage_location_id";
@@ -132,7 +132,8 @@ void PartsModel::fetchParts()
             query.value(1).toString(),
             query.value(2).toInt(),
             query.value(3).toString(),
-            query.value(4).toString()
+            query.value(4).toString(),
+            query.value(5).toString()
         });
     }
 
@@ -165,10 +166,11 @@ QVariant PartsModel::data(const QModelIndex& index, int role) const
 
     if (role == Qt::DisplayRole || role == Qt::EditRole) {
         switch (index.column()) {
-        case ColName:     return p.name;
-        case ColQuantity: return p.quantity;
-        case ColCategory: return p.categoryName;
-        case ColLocation: return p.locationName;
+        case ColName:       return p.name;
+        case ColQuantity:   return p.quantity;
+        case ColCategory:   return p.categoryName;
+        case ColLocation:   return p.locationName;
+        case ColLastChange: return p.lastChange;
         }
     }
 
@@ -184,10 +186,11 @@ QVariant PartsModel::headerData(int section, Qt::Orientation orientation, int ro
         return {};
 
     switch (section) {
-    case ColName:     return tr("Name");
-    case ColQuantity: return tr("Qty");
-    case ColCategory: return tr("Category");
-    case ColLocation: return tr("Location");
+    case ColName:       return tr("Name");
+    case ColQuantity:   return tr("Qty");
+    case ColCategory:   return tr("Category");
+    case ColLocation:   return tr("Location");
+    case ColLastChange: return tr("Last Change");
     }
     return {};
 }

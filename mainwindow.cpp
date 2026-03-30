@@ -44,10 +44,11 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Parts table view
     ui->tableView->setModel(mPartsModel);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColName,     QHeaderView::Stretch);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColQuantity, QHeaderView::ResizeToContents);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColCategory, QHeaderView::ResizeToContents);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColLocation, QHeaderView::ResizeToContents);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColName,       QHeaderView::Stretch);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColQuantity,   QHeaderView::ResizeToContents);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColCategory,   QHeaderView::ResizeToContents);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColLocation,   QHeaderView::ResizeToContents);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColLastChange, QHeaderView::ResizeToContents);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableView->verticalHeader()->setVisible(false);

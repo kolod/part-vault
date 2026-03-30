@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS parts (
     name                    TEXT    NOT NULL,
     quantity                INTEGER NOT NULL DEFAULT 0,
     storage_location_id     INTEGER REFERENCES storage_locations(id) ON DELETE SET NULL,
-    category_id             INTEGER REFERENCES categories(id)        ON DELETE SET NULL
+    category_id             INTEGER REFERENCES categories(id)        ON DELETE SET NULL,
+    last_change             TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now', 'localtime'))
 );
 
 -- Files stored on the local drive and associated with parts.

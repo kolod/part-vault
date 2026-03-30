@@ -264,5 +264,10 @@ Copyright (C) 2026-...  Олександр Колодкін</translation>
         <source>Location</source>
         <translation>Місце зберігання</translation>
     </message>
+    <message>
+        <location filename="partsmodel.cpp" line="191"/>
+        <source>Last Change</source>
+        <translation>Остання зміна</translation>
+    </message>
 </context>
 </TS>
