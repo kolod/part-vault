@@ -49,14 +49,6 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableView->verticalHeader()->setVisible(false);
 
-    // Filter parts when a category is selected in the combo box
-    // connect(ui->treeView, qOverload<int>(&QComboBox::currentIndexChanged),
-    //         this, [this, categoryModel]() {
-    //             const QModelIndex idx = ui->cbCategory->view()->currentIndex();
-    //             m_partsModel->setCategory(categoryModel->categoryId(idx));
-    //         });
-
-
     // Menu actions
 
     // Exit action
@@ -81,12 +73,19 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         auto index = ui->viewCategories->currentIndex();
         auto categoryId = m_categoryModel->categoryId(index);
 
-        AddCategoryDialog dlg(conn, this);
-        dlg.setCategory(categoryId);
+        AddCategoryDialog dlg(conn, categoryId, this);
         if (dlg.exec() != QDialog::Accepted) return;
 
-        if (m_databaseManager.addCategory(dlg.name(), dlg.parentId()) >= 0)
-            m_categoryModel->reload();
+        const int newId = m_databaseManager.addCategory(dlg.name(), dlg.parentId());
+        if (newId >= 0) {
+            m_categoryModel->reload(ui->viewCategories);
+            const QModelIndex newIndex = m_categoryModel->indexForId(newId);
+            if (newIndex.isValid()) {
+                ui->viewCategories->expand(newIndex.parent());
+                ui->viewCategories->setCurrentIndex(newIndex);
+                ui->viewCategories->scrollTo(newIndex);
+            }
+        }
     });
 
     // Add Part action

@@ -20,6 +20,9 @@
 #include <QSqlDatabase>
 #include <QString>
 #include <QList>
+#include <QSet>
+
+class QTreeView;
 
 // Internal tree node — one per category row.
 struct CategoryNode
@@ -49,8 +52,14 @@ public:
     // Reloads the entire tree from the database.
     void reload();
 
+    // Reloads while preserving the expanded state of the given view.
+    void reload(QTreeView* view);
+
     // Returns the category id for the given index, or -1 if invalid.
     int categoryId(const QModelIndex& index) const;
+
+    // Returns the model index for a given category id, or invalid if not found.
+    QModelIndex indexForId(int categoryId) const;
 
     // QAbstractItemModel interface
     QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override;

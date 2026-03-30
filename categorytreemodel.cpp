@@ -23,6 +23,7 @@
 #include <QSet>
 #include <QPalette>
 #include <QApplication>
+#include <QTreeView>
 
 CategoryTreeModel::CategoryTreeModel(QSqlDatabase& db, QObject* parent)
     : QAbstractItemModel(parent), m_db(db)
@@ -41,6 +42,31 @@ void CategoryTreeModel::reload() {
     m_root = new CategoryNode{-1, QString{}};
     buildTree();
     endResetModel();
+}
+
+void CategoryTreeModel::reload(QTreeView* view) {
+    // Collect the IDs of currently expanded nodes.
+    QSet<int> expandedIds;
+    QList<QModelIndex> stack;
+    for (int r = 0; r < rowCount(); ++r)
+        stack.append(index(r, 0));
+    while (!stack.isEmpty()) {
+        const QModelIndex idx = stack.takeLast();
+        if (view->isExpanded(idx)) {
+            expandedIds.insert(categoryId(idx));
+            for (int r = 0; r < rowCount(idx); ++r)
+                stack.append(index(r, 0, idx));
+        }
+    }
+
+    reload();   // resets the model
+
+    // Re-expand nodes whose IDs were expanded before.
+    for (int id : std::as_const(expandedIds)) {
+        const QModelIndex idx = indexForId(id);
+        if (idx.isValid())
+            view->expand(idx);
+    }
 }
 
 void CategoryTreeModel::buildTree() {
@@ -128,6 +154,22 @@ CategoryNode* CategoryTreeModel::nodeFromIndex(const QModelIndex& index) const {
 int CategoryTreeModel::categoryId(const QModelIndex& index) const {
     if (!index.isValid()) return -1;
     return nodeFromIndex(index)->id;
+}
+
+QModelIndex CategoryTreeModel::indexForId(int id) const {
+    // BFS over the whole tree
+    QList<QPair<CategoryNode*, QModelIndex>> queue;
+    for (int r = 0; r < m_root->children.size(); ++r)
+        queue.append({m_root->children.at(r), index(r, 0)});
+
+    while (!queue.isEmpty()) {
+        auto [node, idx] = queue.takeFirst();
+        if (node->id == id)
+            return idx;
+        for (int r = 0; r < node->children.size(); ++r)
+            queue.append({node->children.at(r), index(r, 0, idx)});
+    }
+    return {};
 }
 
 // ── QAbstractItemModel ───────────────────────────────────────────────────────

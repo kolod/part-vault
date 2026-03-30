@@ -18,49 +18,30 @@
 
 #include <QDialog>
 #include <QString>
-#include <QList>
 
 class QLineEdit;
-class QComboBox;
-class QPushButton;
+class QLabel;
 class QDialogButtonBox;
-class QVBoxLayout;
 
-// Dialog for adding a new category.
-// The parent is selected via a cascading drill-down:
-//  - The first combo shows top-level categories (children of id=0).
-//  - Selecting a category that has children adds a new combo below.
-//  - "Back" removes the last combo level.
-//  - "New subcategory" creates an intermediate category (child of the
-//    currently selected item) and descends into it automatically.
-// OK is enabled when name is non-empty and a category (id > 0) is selected
-// in the last combo.  parentId() always returns a value > 0 on accept.
+// Dialog for adding a new category as a child of a pre-determined parent.
+// The parent is passed at construction time (taken from the current tree selection).
+// The full ancestor path is shown as read-only text.
+// parentId() == 0 means top-level (child of the virtual "All" root).
 class AddCategoryDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AddCategoryDialog(const QString& connectionName, QWidget* parent = nullptr);
+    explicit AddCategoryDialog(const QString& connectionName, int parentId, QWidget* parent = nullptr);
 
     QString name()     const;
-    int     parentId() const;   // > 0 when accepted
-
-    // Pre-selects the cascade path to categoryId before exec() is called.
-    // Does nothing if categoryId <= 0 or not found in the DB.
-    void setCategory(int categoryId);
+    int     parentId() const;   // the id passed at construction
 
 private:
-    QString            m_connectionName;
+    int                m_parentId;
     QLineEdit*         m_nameEdit;
-    QVBoxLayout*       m_cascadeLayout;
-    QList<QComboBox*>  m_combos;
-    QPushButton*       m_backButton;
     QDialogButtonBox*  m_buttons;
 
-    void addCascadeLevel(int parentId);
-    void removeCascadeLevel();
-    bool hasChildren(int categoryId) const;
-    void loadChildren(int parentId, QComboBox* combo);
-    void onComboChanged(QComboBox* combo);
-    void validate();
+    QString buildPath(const QString& connectionName) const;
+    void    validate();
 };
