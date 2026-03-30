@@ -56,6 +56,10 @@ public:
     // Returns the model index for a given location id, or invalid if not found.
     QModelIndex indexForId(int locationId) const;
 
+    // Restricts "active" highlighting to locations that have parts in
+    // categoryId (and its descendants). Pass 0 or -1 to clear the filter.
+    void setCategoryFilter(int categoryId);
+
     // QAbstractItemModel interface
     QModelIndex   index      (int row, int column, const QModelIndex& parent = QModelIndex()) const override;
     QModelIndex   parent     (const QModelIndex& child) const override;
@@ -68,8 +72,10 @@ public:
 private:
     QString       mConnectionName;
     StorageNode*  mRoot = nullptr;
+    int           mCategoryFilter = 0;  // 0/-1 = no filter
 
     void buildTree();
     void markActiveNodes();
+    void refreshActiveNodes();
     StorageNode* nodeFromIndex(const QModelIndex& index) const;
 };

@@ -25,6 +25,7 @@
 #include <QPalette>
 #include <QApplication>
 #include <QTreeView>
+#include <functional>
 
 StorageTreeModel::StorageTreeModel(const QString& connectionName, QObject* parent)
     : QAbstractItemModel(parent), mConnectionName(connectionName)
@@ -119,7 +120,22 @@ void StorageTreeModel::markActiveNodes()
     QSet<int> directlyUsed;
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
     QSqlQuery q(db);
-    q.prepare("SELECT DISTINCT storage_location_id FROM parts WHERE storage_location_id IS NOT NULL");
+
+    if (mCategoryFilter > 0) {
+        q.prepare(
+            "WITH RECURSIVE cat_desc(id) AS ("
+            "  SELECT :cat"
+            "  UNION ALL"
+            "  SELECT c.id FROM categories c JOIN cat_desc d ON c.parent_id = d.id"
+            ")"
+            "SELECT DISTINCT p.storage_location_id FROM parts p"
+            " INNER JOIN cat_desc d ON p.category_id = d.id"
+            " WHERE p.storage_location_id IS NOT NULL");
+        q.bindValue(":cat", mCategoryFilter);
+    } else {
+        q.prepare("SELECT DISTINCT storage_location_id FROM parts WHERE storage_location_id IS NOT NULL");
+    }
+
     if (q.exec()) {
         while (q.next())
             directlyUsed.insert(q.value(0).toInt());
@@ -154,6 +170,36 @@ int StorageTreeModel::locationId(const QModelIndex& index) const
 {
     if (!index.isValid()) return -1;
     return nodeFromIndex(index)->id;
+}
+
+void StorageTreeModel::setCategoryFilter(int categoryId)
+{
+    if (mCategoryFilter == categoryId) return;
+    mCategoryFilter = categoryId;
+    refreshActiveNodes();
+}
+
+void StorageTreeModel::refreshActiveNodes()
+{
+    // Reset all active flags
+    QList<StorageNode*> stack = mRoot->children;
+    while (!stack.isEmpty()) {
+        StorageNode* n = stack.takeFirst();
+        n->active = false;
+        stack.append(n->children);
+    }
+
+    markActiveNodes();
+
+    // Notify the view — emit dataChanged for ForegroundRole across the whole tree
+    std::function<void(const QModelIndex&)> notify = [&](const QModelIndex& parent) {
+        const int n = rowCount(parent);
+        if (n == 0) return;
+        emit dataChanged(index(0, 0, parent), index(n - 1, 0, parent), {Qt::ForegroundRole});
+        for (int r = 0; r < n; ++r)
+            notify(index(r, 0, parent));
+    };
+    notify(QModelIndex{});
 }
 
 QModelIndex StorageTreeModel::indexForId(int id) const

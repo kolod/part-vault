@@ -25,6 +25,7 @@
 #include <QPalette>
 #include <QApplication>
 #include <QTreeView>
+#include <functional>
 
 CategoryTreeModel::CategoryTreeModel(const QString& connectionName, QObject* parent)
     : QAbstractItemModel(parent), mConnectionName(connectionName)
@@ -118,10 +119,26 @@ void CategoryTreeModel::buildTree() {
 
 void CategoryTreeModel::markActiveNodes() {
     // Collect the set of category IDs that have at least one part directly.
+    // When mLocationFilter is set, restrict to parts in that location subtree.
     QSet<int> directlyUsed;
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
     QSqlQuery q(db);
-    q.prepare("SELECT DISTINCT category_id FROM parts WHERE category_id IS NOT NULL");
+
+    if (mLocationFilter > 0) {
+        q.prepare(
+            "WITH RECURSIVE loc_desc(id) AS ("
+            "  SELECT :loc"
+            "  UNION ALL"
+            "  SELECT s.id FROM storage_locations s JOIN loc_desc d ON s.parent_id = d.id"
+            ")"
+            "SELECT DISTINCT p.category_id FROM parts p"
+            " INNER JOIN loc_desc d ON p.storage_location_id = d.id"
+            " WHERE p.category_id IS NOT NULL");
+        q.bindValue(":loc", mLocationFilter);
+    } else {
+        q.prepare("SELECT DISTINCT category_id FROM parts WHERE category_id IS NOT NULL");
+    }
+
     if (q.exec()) {
         while (q.next())
             directlyUsed.insert(q.value(0).toInt());
@@ -157,6 +174,36 @@ CategoryNode* CategoryTreeModel::nodeFromIndex(const QModelIndex& index) const {
 int CategoryTreeModel::categoryId(const QModelIndex& index) const {
     if (!index.isValid()) return -1;
     return nodeFromIndex(index)->id;
+}
+
+void CategoryTreeModel::setLocationFilter(int locationId)
+{
+    if (mLocationFilter == locationId) return;
+    mLocationFilter = locationId;
+    refreshActiveNodes();
+}
+
+void CategoryTreeModel::refreshActiveNodes()
+{
+    // Reset all active flags
+    QList<CategoryNode*> stack = mRoot->children;
+    while (!stack.isEmpty()) {
+        CategoryNode* n = stack.takeFirst();
+        n->active = false;
+        stack.append(n->children);
+    }
+
+    markActiveNodes();
+
+    // Notify the view — emit dataChanged for ForegroundRole across the whole tree
+    std::function<void(const QModelIndex&)> notify = [&](const QModelIndex& parent) {
+        const int n = rowCount(parent);
+        if (n == 0) return;
+        emit dataChanged(index(0, 0, parent), index(n - 1, 0, parent), {Qt::ForegroundRole});
+        for (int r = 0; r < n; ++r)
+            notify(index(r, 0, parent));
+    };
+    notify(QModelIndex{});
 }
 
 QModelIndex CategoryTreeModel::indexForId(int id) const {

@@ -165,12 +165,16 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Filter by category when a category is selected in the tree view
     connect( ui->viewCategories->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
-        mPartsModel->setCategory(mCategoryModel->categoryId(current));
+        const int catId = mCategoryModel->categoryId(current);
+        mPartsModel->setCategory(catId);
+        mStorageModel->setCategoryFilter(catId);
     });
 
     // Filter by storage location when a location is selected in the tree view
     connect(ui->viewStorageLocations->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
-        mPartsModel->setStorageLocation(mStorageModel->locationId(current));
+        const int locId = mStorageModel->locationId(current);
+        mPartsModel->setStorageLocation(locId);
+        mCategoryModel->setLocationFilter(locId);
     });
 }
 
