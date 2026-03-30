@@ -14,23 +14,24 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "addcategorydialog.h"
+#include "addstoragelocationdialog.h"
+
 
 #include <QLineEdit>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <QPushButton>
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QDebug>
-#include <QPushButton>
 
-AddCategoryDialog::AddCategoryDialog(const QString& connectionName, int parentId, QWidget* parent)
+AddStorageLocationDialog::AddStorageLocationDialog(const QString& connectionName, int parentId, QWidget* parent)
     : QDialog(parent), mParentId(parentId)
 {
-    setWindowTitle(tr("Add Category"));
-    setMinimumWidth(360);
+    setWindowTitle(tr("Add Storage Location"));
+    setMinimumWidth(320);
 
     mNameEdit = new QLineEdit(this);
 
@@ -45,27 +46,27 @@ AddCategoryDialog::AddCategoryDialog(const QString& connectionName, int parentId
     mButtons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     mButtons->button(QDialogButtonBox::Ok)->setEnabled(false);
 
-    auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->addLayout(form);
-    mainLayout->addWidget(mButtons);
+    auto* layout = new QVBoxLayout(this);
+    layout->addLayout(form);
+    layout->addWidget(mButtons);
 
-    connect(mNameEdit, &QLineEdit::textChanged, this, &AddCategoryDialog::validate);
+    connect(mNameEdit, &QLineEdit::textChanged, this, &AddStorageLocationDialog::validate);
     connect(mButtons, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(mButtons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
-QString AddCategoryDialog::name() const {
+QString AddStorageLocationDialog::name() const
+{
     return mNameEdit->text().trimmed();
 }
 
-int AddCategoryDialog::parentId() const {
+int AddStorageLocationDialog::parentId() const
+{
     return mParentId;
 }
 
-// ── private ──────────────────────────────────────────────────────────────────
-
-// Walk parent_id up from mParentId and build "Root → Child → …" display string.
-QString AddCategoryDialog::buildPath(const QString& connectionName) const {
+QString AddStorageLocationDialog::buildPath(const QString& connectionName) const
+{
     if (mParentId <= 0) return {};
 
     QSqlDatabase db = QSqlDatabase::database(connectionName);
@@ -74,18 +75,19 @@ QString AddCategoryDialog::buildPath(const QString& connectionName) const {
     QStringList parts;
     int current = mParentId;
     while (current > 0) {
-        q.prepare("SELECT name, parent_id FROM categories WHERE id = ?");
+        q.prepare("SELECT name, parent_id FROM storage_locations WHERE id = ?");
         q.addBindValue(current);
         if (!q.exec() || !q.next()) {
-            qWarning() << "AddCategoryDialog: category" << current << "not found";
+            qWarning() << "AddStorageLocationDialog: location" << current << "not found";
             break;
         }
         parts.prepend(q.value(0).toString());
         current = q.value(1).isNull() ? 0 : q.value(1).toInt();
     }
-    return parts.join(QString(" > "));
+    return parts.join(QString(" \u2192 "));
 }
 
-void AddCategoryDialog::validate() {
+void AddStorageLocationDialog::validate()
+{
     mButtons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());
 }

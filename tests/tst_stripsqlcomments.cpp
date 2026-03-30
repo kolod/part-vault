@@ -15,7 +15,7 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <QTest>
-#include "../utils.h"
+#include "../src/utils.h"
 
 class TstStripSqlComments : public QObject
 {

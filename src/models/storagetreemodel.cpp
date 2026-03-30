@@ -14,7 +14,8 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "categorytreemodel.h"
+#include "storagetreemodel.h"
+
 
 #include <QSqlDatabase>
 #include <QSqlQuery>
@@ -27,27 +28,29 @@
 #include <QTreeView>
 #include <functional>
 
-CategoryTreeModel::CategoryTreeModel(const QString& connectionName, QObject* parent)
+StorageTreeModel::StorageTreeModel(const QString& connectionName, QObject* parent)
     : QAbstractItemModel(parent), mConnectionName(connectionName)
 {
-    mRoot = new CategoryNode{-1, QString{}};
+    mRoot = new StorageNode{-1, QString{}};
     buildTree();
 }
 
-CategoryTreeModel::~CategoryTreeModel() {
+StorageTreeModel::~StorageTreeModel()
+{
     delete mRoot;
 }
 
-void CategoryTreeModel::reload() {
+void StorageTreeModel::reload()
+{
     beginResetModel();
     delete mRoot;
-    mRoot = new CategoryNode{-1, QString{}};
+    mRoot = new StorageNode{-1, QString{}};
     buildTree();
     endResetModel();
 }
 
-void CategoryTreeModel::reload(QTreeView* view) {
-    // Collect the IDs of currently expanded nodes.
+void StorageTreeModel::reload(QTreeView* view)
+{
     QSet<int> expandedIds;
     QList<QModelIndex> stack;
     for (int r = 0; r < rowCount(); ++r)
@@ -55,15 +58,14 @@ void CategoryTreeModel::reload(QTreeView* view) {
     while (!stack.isEmpty()) {
         const QModelIndex idx = stack.takeLast();
         if (view->isExpanded(idx)) {
-            expandedIds.insert(categoryId(idx));
+            expandedIds.insert(locationId(idx));
             for (int r = 0; r < rowCount(idx); ++r)
                 stack.append(index(r, 0, idx));
         }
     }
 
-    reload();   // resets the model
+    reload();
 
-    // Re-expand nodes whose IDs were expanded before.
     for (int id : std::as_const(expandedIds)) {
         const QModelIndex idx = indexForId(id);
         if (idx.isValid())
@@ -71,38 +73,37 @@ void CategoryTreeModel::reload(QTreeView* view) {
     }
 }
 
-void CategoryTreeModel::buildTree() {
-    // Load every category row into a flat map keyed by id.
-    QHash<int, CategoryNode*> nodeMap;
+void StorageTreeModel::buildTree()
+{
+    QHash<int, StorageNode*> nodeMap;
 
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
     QSqlQuery query(db);
-    query.prepare("SELECT id, name, parent_id FROM categories ORDER BY name");
+    query.prepare("SELECT id, name, parent_id FROM storage_locations ORDER BY name");
     if (!query.exec()) {
-        qWarning() << "CategoryTreeModel: query failed:" << query.lastError().text();
+        qWarning() << "StorageTreeModel: query failed:" << query.lastError().text();
         return;
     }
 
     while (query.next()) {
-        auto* node    = new CategoryNode;
-        node->id      = query.value(0).toInt();
-        node->name    = query.value(1).toString();
-        node->parent  = nullptr;
+        auto* node   = new StorageNode;
+        node->id     = query.value(0).toInt();
+        node->name   = query.value(1).toString();
+        node->parent = nullptr;
         nodeMap.insert(node->id, node);
     }
 
-    // Wire up parent/child relationships; orphans go under the invisible root.
-    query.prepare("SELECT id, parent_id FROM categories");
+    query.prepare("SELECT id, parent_id FROM storage_locations");
     if (!query.exec()) return;
 
     while (query.next()) {
         const int id       = query.value(0).toInt();
         const int parentId = query.value(1).isNull() ? -1 : query.value(1).toInt();
 
-        CategoryNode* node = nodeMap.value(id, nullptr);
+        StorageNode* node = nodeMap.value(id, nullptr);
         if (!node) continue;
 
-        CategoryNode* parentNode = (parentId != -1) ? nodeMap.value(parentId, nullptr) : nullptr;
+        StorageNode* parentNode = (parentId != -1) ? nodeMap.value(parentId, nullptr) : nullptr;
         if (parentNode) {
             node->parent = parentNode;
             parentNode->children.append(node);
@@ -115,28 +116,25 @@ void CategoryTreeModel::buildTree() {
     markActiveNodes();
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-void CategoryTreeModel::markActiveNodes() {
-    // Collect the set of category IDs that have at least one part directly.
-    // When mLocationFilter is set, restrict to parts in that location subtree.
+void StorageTreeModel::markActiveNodes()
+{
     QSet<int> directlyUsed;
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
     QSqlQuery q(db);
 
-    if (mLocationFilter > 0) {
+    if (mCategoryFilter > 0) {
         q.prepare(
-            "WITH RECURSIVE loc_desc(id) AS ("
-            "  SELECT :loc"
+            "WITH RECURSIVE cat_desc(id) AS ("
+            "  SELECT :cat"
             "  UNION ALL"
-            "  SELECT s.id FROM storage_locations s JOIN loc_desc d ON s.parent_id = d.id"
+            "  SELECT c.id FROM categories c JOIN cat_desc d ON c.parent_id = d.id"
             ")"
-            "SELECT DISTINCT p.category_id FROM parts p"
-            " INNER JOIN loc_desc d ON p.storage_location_id = d.id"
-            " WHERE p.category_id IS NOT NULL");
-        q.bindValue(":loc", mLocationFilter);
+            "SELECT DISTINCT p.storage_location_id FROM parts p"
+            " INNER JOIN cat_desc d ON p.category_id = d.id"
+            " WHERE p.storage_location_id IS NOT NULL");
+        q.bindValue(":cat", mCategoryFilter);
     } else {
-        q.prepare("SELECT DISTINCT category_id FROM parts WHERE category_id IS NOT NULL");
+        q.prepare("SELECT DISTINCT storage_location_id FROM parts WHERE storage_location_id IS NOT NULL");
     }
 
     if (q.exec()) {
@@ -144,51 +142,50 @@ void CategoryTreeModel::markActiveNodes() {
             directlyUsed.insert(q.value(0).toInt());
     }
 
-    // For each directly-used category, walk up the ancestor chain and mark all
-    // nodes on the path as active (so parents of used categories are also highlighted).
-    // Build a flat id→node map by traversing the tree we just built.
-    QHash<int, CategoryNode*> nodeMap;
-    QList<CategoryNode*> stack = mRoot->children;
+    QHash<int, StorageNode*> nodeMap;
+    QList<StorageNode*> stack = mRoot->children;
     while (!stack.isEmpty()) {
-        CategoryNode* n = stack.takeFirst();
+        StorageNode* n = stack.takeFirst();
         nodeMap.insert(n->id, n);
         stack.append(n->children);
     }
 
     for (int id : std::as_const(directlyUsed)) {
-        CategoryNode* node = nodeMap.value(id, nullptr);
+        StorageNode* node = nodeMap.value(id, nullptr);
         while (node && node != mRoot) {
-            if (node->active) break;   // already marked — ancestors are marked too
+            if (node->active) break;
             node->active = true;
             node = node->parent;
         }
     }
 }
 
-CategoryNode* CategoryTreeModel::nodeFromIndex(const QModelIndex& index) const {
+StorageNode* StorageTreeModel::nodeFromIndex(const QModelIndex& index) const
+{
     if (!index.isValid())
         return mRoot;
-    return static_cast<CategoryNode*>(index.internalPointer());
+    return static_cast<StorageNode*>(index.internalPointer());
 }
 
-int CategoryTreeModel::categoryId(const QModelIndex& index) const {
+int StorageTreeModel::locationId(const QModelIndex& index) const
+{
     if (!index.isValid()) return -1;
     return nodeFromIndex(index)->id;
 }
 
-void CategoryTreeModel::setLocationFilter(int locationId)
+void StorageTreeModel::setCategoryFilter(int categoryId)
 {
-    if (mLocationFilter == locationId) return;
-    mLocationFilter = locationId;
+    if (mCategoryFilter == categoryId) return;
+    mCategoryFilter = categoryId;
     refreshActiveNodes();
 }
 
-void CategoryTreeModel::refreshActiveNodes()
+void StorageTreeModel::refreshActiveNodes()
 {
     // Reset all active flags
-    QList<CategoryNode*> stack = mRoot->children;
+    QList<StorageNode*> stack = mRoot->children;
     while (!stack.isEmpty()) {
-        CategoryNode* n = stack.takeFirst();
+        StorageNode* n = stack.takeFirst();
         n->active = false;
         stack.append(n->children);
     }
@@ -206,9 +203,9 @@ void CategoryTreeModel::refreshActiveNodes()
     notify(QModelIndex{});
 }
 
-QModelIndex CategoryTreeModel::indexForId(int id) const {
-    // BFS over the whole tree
-    QList<QPair<CategoryNode*, QModelIndex>> queue;
+QModelIndex StorageTreeModel::indexForId(int id) const
+{
+    QList<QPair<StorageNode*, QModelIndex>> queue;
     for (int r = 0; r < mRoot->children.size(); ++r)
         queue.append({mRoot->children.at(r), index(r, 0)});
 
@@ -224,46 +221,51 @@ QModelIndex CategoryTreeModel::indexForId(int id) const {
 
 // ── QAbstractItemModel ───────────────────────────────────────────────────────
 
-QModelIndex CategoryTreeModel::index(int row, int column, const QModelIndex& parent) const {
+QModelIndex StorageTreeModel::index(int row, int column, const QModelIndex& parent) const
+{
     if (!hasIndex(row, column, parent))
         return {};
 
-    CategoryNode* parentNode = nodeFromIndex(parent);
+    StorageNode* parentNode = nodeFromIndex(parent);
     if (row < 0 || row >= parentNode->children.size())
         return {};
 
     return createIndex(row, column, parentNode->children.at(row));
 }
 
-QModelIndex CategoryTreeModel::parent(const QModelIndex& child) const {
+QModelIndex StorageTreeModel::parent(const QModelIndex& child) const
+{
     if (!child.isValid())
         return {};
 
-    CategoryNode* node       = nodeFromIndex(child);
-    CategoryNode* parentNode = node->parent;
+    StorageNode* node       = nodeFromIndex(child);
+    StorageNode* parentNode = node->parent;
 
     if (!parentNode || parentNode == mRoot)
         return {};
 
-    CategoryNode* grandParent = parentNode->parent ? parentNode->parent : mRoot;
+    StorageNode* grandParent = parentNode->parent ? parentNode->parent : mRoot;
     const int row = grandParent->children.indexOf(parentNode);
     if (row < 0) return {};
 
     return createIndex(row, 0, parentNode);
 }
 
-int CategoryTreeModel::rowCount(const QModelIndex& parent) const {
+int StorageTreeModel::rowCount(const QModelIndex& parent) const
+{
     return nodeFromIndex(parent)->children.size();
 }
 
-int CategoryTreeModel::columnCount(const QModelIndex&) const {
+int StorageTreeModel::columnCount(const QModelIndex&) const
+{
     return 1;
 }
 
-QVariant CategoryTreeModel::data(const QModelIndex& index, int role) const {
+QVariant StorageTreeModel::data(const QModelIndex& index, int role) const
+{
     if (!index.isValid()) return {};
 
-    CategoryNode* node = nodeFromIndex(index);
+    StorageNode* node = nodeFromIndex(index);
 
     switch (role) {
     case Qt::DisplayRole:
@@ -279,13 +281,15 @@ QVariant CategoryTreeModel::data(const QModelIndex& index, int role) const {
     }
 }
 
-QVariant CategoryTreeModel::headerData(int section, Qt::Orientation orientation, int role) const {
+QVariant StorageTreeModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
     if (orientation == Qt::Horizontal && role == Qt::DisplayRole && section == 0)
-        return tr("Category");
+        return tr("Storage Location");
     return {};
 }
 
-Qt::ItemFlags CategoryTreeModel::flags(const QModelIndex& index) const {
+Qt::ItemFlags StorageTreeModel::flags(const QModelIndex& index) const
+{
     if (!index.isValid()) return Qt::NoItemFlags;
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }

@@ -16,6 +16,7 @@
 
 #include "partsmodel.h"
 
+
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>

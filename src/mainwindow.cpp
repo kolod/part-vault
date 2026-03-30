@@ -16,12 +16,12 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "categorytreemodel.h"
-#include "storagetreemodel.h"
-#include "partsmodel.h"
-#include "addpartdialog.h"
-#include "addcategorydialog.h"
-#include "addstoragelocationdialog.h"
+#include "models/categorytreemodel.h"
+#include "models/storagetreemodel.h"
+#include "models/partsmodel.h"
+#include "dialogs/addpartdialog.h"
+#include "dialogs/addcategorydialog.h"
+#include "dialogs/addstoragelocationdialog.h"
 #include <QHeaderView>
 #include <QDebug>
 #include <functional>

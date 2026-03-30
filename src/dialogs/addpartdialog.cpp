@@ -16,6 +16,7 @@
 
 #include "addpartdialog.h"
 
+
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QLabel>
