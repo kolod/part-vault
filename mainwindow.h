@@ -82,9 +82,8 @@ public:
 private:
     void closeEvent(QCloseEvent *event) override;
 
-private:
     Ui::MainWindow    *ui;
-    DatabaseManager   &m_databaseManager;
-    PartsModel        *m_partsModel    = nullptr;
-    CategoryTreeModel *m_categoryModel = nullptr;
+    DatabaseManager   &mDatabaseManager;
+    PartsModel        *mPartsModel    = nullptr;
+    CategoryTreeModel *mCategoryModel = nullptr;
 };

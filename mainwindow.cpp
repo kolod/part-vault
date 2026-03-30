@@ -28,20 +28,22 @@
 MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , m_databaseManager(databaseManager)
+    , mDatabaseManager(databaseManager)
 {
     ui->setupUi(this);
 
-
-    // Category tree
-    m_categoryModel = new CategoryTreeModel(m_databaseManager.database(), this);
-    ui->viewCategories->setModel(m_categoryModel);
-
     // Parts table
-    const QString conn = m_databaseManager.database().connectionName();
+    const QString conn = mDatabaseManager.database().connectionName();
 
-    m_partsModel = new PartsModel(conn, this);
-    ui->tableView->setModel(m_partsModel);
+    // Create models
+    mPartsModel = new PartsModel(conn, this);
+    mCategoryModel = new CategoryTreeModel(mDatabaseManager.database(), this);
+
+    // Category tree view
+    ui->viewCategories->setModel(mCategoryModel);
+
+    // Parts table view
+    ui->tableView->setModel(mPartsModel);
     ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColName,     QHeaderView::Stretch);
     ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColQuantity, QHeaderView::ResizeToContents);
     ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColCategory, QHeaderView::ResizeToContents);
@@ -70,17 +72,17 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Add Category action
     connect(ui->actionAddCategory, &QAction::triggered, this, [this]() {
-        const QString conn = m_databaseManager.database().connectionName();
+        const QString conn = mDatabaseManager.database().connectionName();
         auto index = ui->viewCategories->currentIndex();
-        auto categoryId = m_categoryModel->categoryId(index);
+        auto categoryId = mCategoryModel->categoryId(index);
 
         AddCategoryDialog dlg(conn, categoryId, this);
         if (dlg.exec() != QDialog::Accepted) return;
 
-        const int newId = m_databaseManager.addCategory(dlg.name(), dlg.parentId());
+        const int newId = mDatabaseManager.addCategory(dlg.name(), dlg.parentId());
         if (newId >= 0) {
-            m_categoryModel->reload(ui->viewCategories);
-            const QModelIndex newIndex = m_categoryModel->indexForId(newId);
+            mCategoryModel->reload(ui->viewCategories);
+            const QModelIndex newIndex = mCategoryModel->indexForId(newId);
             if (newIndex.isValid()) {
                 ui->viewCategories->expand(newIndex.parent());
                 ui->viewCategories->setCurrentIndex(newIndex);
@@ -91,12 +93,12 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Add Part action
     connect(ui->actionAddPart, &QAction::triggered, this, [this]() {
-        const QString conn = m_databaseManager.database().connectionName();
+        const QString conn = mDatabaseManager.database().connectionName();
         AddPartDialog dlg(conn, this);
         if (dlg.exec() != QDialog::Accepted) return;
 
-        if (m_databaseManager.addPart(dlg.name(), dlg.quantity(), dlg.categoryId(), dlg.locationId()) >= 0)
-            m_partsModel->reload();
+        if (mDatabaseManager.addPart(dlg.name(), dlg.quantity(), dlg.categoryId(), dlg.locationId()) >= 0)
+            mPartsModel->reload();
     });
 
     // Add Storage Location action
@@ -104,7 +106,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         AddStorageLocationDialog dlg(this);
         if (dlg.exec() != QDialog::Accepted) return;
 
-        m_databaseManager.addStorageLocation(dlg.name());
+        mDatabaseManager.addStorageLocation(dlg.name());
     });
 
     // Remove Part action
@@ -134,7 +136,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Filter by category when a category is selected in the tree view
     connect( ui->viewCategories->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
-        m_partsModel->setCategory(m_categoryModel->categoryId(current));
+        mPartsModel->setCategory(mCategoryModel->categoryId(current));
     });
 }
 
@@ -151,7 +153,7 @@ void MainWindow::restoreSession(){
     // Restore expanded categories
     const QList<QVariant> expandedRaw = settings.value("categories/expanded").toList();
     for (const QVariant& v : expandedRaw) {
-        const QModelIndex idx = m_categoryModel->indexForId(v.toInt());
+        const QModelIndex idx = mCategoryModel->indexForId(v.toInt());
         if (idx.isValid())
             ui->viewCategories->expand(idx);
     }
@@ -159,7 +161,7 @@ void MainWindow::restoreSession(){
     // Restore selected category
     const int selectedId = settings.value("categories/selected", 0).toInt();
     if (selectedId > 0) {
-        const QModelIndex idx = m_categoryModel->indexForId(selectedId);
+        const QModelIndex idx = mCategoryModel->indexForId(selectedId);
         if (idx.isValid()) {
             ui->viewCategories->setCurrentIndex(idx);
             ui->viewCategories->scrollTo(idx);
@@ -176,10 +178,10 @@ void MainWindow::saveSession(){
     // Save expanded category IDs
     QList<QVariant> expandedIds;
     std::function<void(const QModelIndex&)> collectExpanded = [&](const QModelIndex& parent) {
-        for (int r = 0; r < m_categoryModel->rowCount(parent); ++r) {
-            const QModelIndex idx = m_categoryModel->index(r, 0, parent);
+        for (int r = 0; r < mCategoryModel->rowCount(parent); ++r) {
+            const QModelIndex idx = mCategoryModel->index(r, 0, parent);
             if (ui->viewCategories->isExpanded(idx))
-                expandedIds.append(m_categoryModel->categoryId(idx));
+                expandedIds.append(mCategoryModel->categoryId(idx));
             collectExpanded(idx);
         }
     };
@@ -187,7 +189,7 @@ void MainWindow::saveSession(){
     settings.setValue("categories/expanded", expandedIds);
 
     // Save selected category ID
-    const int selectedId = m_categoryModel->categoryId(ui->viewCategories->currentIndex());
+    const int selectedId = mCategoryModel->categoryId(ui->viewCategories->currentIndex());
     settings.setValue("categories/selected", selectedId);
 }
 
