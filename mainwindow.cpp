@@ -23,6 +23,7 @@
 #include "addstoragelocationdialog.h"
 #include <QHeaderView>
 #include <QDebug>
+#include <functional>
 
 MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     : QMainWindow(parent)
@@ -146,6 +147,24 @@ void MainWindow::restoreSession(){
 
     restoreGeometry(settings.value("geometry").toByteArray());
     restoreState(settings.value("state").toByteArray());
+
+    // Restore expanded categories
+    const QList<QVariant> expandedRaw = settings.value("categories/expanded").toList();
+    for (const QVariant& v : expandedRaw) {
+        const QModelIndex idx = m_categoryModel->indexForId(v.toInt());
+        if (idx.isValid())
+            ui->viewCategories->expand(idx);
+    }
+
+    // Restore selected category
+    const int selectedId = settings.value("categories/selected", 0).toInt();
+    if (selectedId > 0) {
+        const QModelIndex idx = m_categoryModel->indexForId(selectedId);
+        if (idx.isValid()) {
+            ui->viewCategories->setCurrentIndex(idx);
+            ui->viewCategories->scrollTo(idx);
+        }
+    }
 }
 
 void MainWindow::saveSession(){
@@ -153,6 +172,23 @@ void MainWindow::saveSession(){
 
     settings.setValue("geometry", saveGeometry());
     settings.setValue("state", saveState());
+
+    // Save expanded category IDs
+    QList<QVariant> expandedIds;
+    std::function<void(const QModelIndex&)> collectExpanded = [&](const QModelIndex& parent) {
+        for (int r = 0; r < m_categoryModel->rowCount(parent); ++r) {
+            const QModelIndex idx = m_categoryModel->index(r, 0, parent);
+            if (ui->viewCategories->isExpanded(idx))
+                expandedIds.append(m_categoryModel->categoryId(idx));
+            collectExpanded(idx);
+        }
+    };
+    collectExpanded(QModelIndex{});
+    settings.setValue("categories/expanded", expandedIds);
+
+    // Save selected category ID
+    const int selectedId = m_categoryModel->categoryId(ui->viewCategories->currentIndex());
+    settings.setValue("categories/selected", selectedId);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event){
