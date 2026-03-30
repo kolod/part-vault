@@ -100,7 +100,9 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     // Add Part action
     connect(ui->actionAddPart, &QAction::triggered, this, [this]() {
         const QString conn = mDatabaseManager.database().connectionName();
-        AddPartDialog dlg(conn, this);
+        const int catId = mCategoryModel->categoryId(ui->viewCategories->currentIndex());
+        const int locId = mStorageModel->locationId(ui->viewStorageLocations->currentIndex());
+        AddPartDialog dlg(conn, catId, locId, this);
         if (dlg.exec() != QDialog::Accepted) return;
 
         if (mDatabaseManager.addPart(dlg.name(), dlg.quantity(), dlg.categoryId(), dlg.locationId()) >= 0)
@@ -178,11 +180,11 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     });
 }
 
-MainWindow::~MainWindow(){
+MainWindow::~MainWindow() {
     delete ui;
 }
 
-void MainWindow::restoreSession(){
+void MainWindow::restoreSession() {
     QSettings settings;
 
     restoreGeometry(settings.value("geometry").toByteArray());
@@ -225,7 +227,7 @@ void MainWindow::restoreSession(){
     }
 }
 
-void MainWindow::saveSession(){
+void MainWindow::saveSession() {
     QSettings settings;
 
     settings.setValue("geometry", saveGeometry());
@@ -266,7 +268,7 @@ void MainWindow::saveSession(){
     settings.setValue("storage/selected", selectedStorageId);
 }
 
-void MainWindow::closeEvent(QCloseEvent *event){
+void MainWindow::closeEvent(QCloseEvent *event) {
     saveSession();
     event->accept();
 }

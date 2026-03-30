@@ -21,19 +21,17 @@
 
 class QLineEdit;
 class QSpinBox;
-class QComboBox;
 class QDialogButtonBox;
 
 // Dialog for adding a new part.
-// Presents fields for name, quantity, category, and storage location.
+// Category and storage location are pre-filled from the current tree selections.
 // On accept, retrieve values via name(), quantity(), categoryId(), locationId().
-// categoryId() / locationId() return -1 when no selection is made.
 class AddPartDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AddPartDialog(const QString& connectionName, QWidget* parent = nullptr);
+    explicit AddPartDialog(const QString& connectionName, int categoryId, int locationId, QWidget* parent = nullptr);
 
     QString name()       const;
     int     quantity()   const;
@@ -43,11 +41,10 @@ public:
 private:
     QLineEdit*        mNameEdit;
     QSpinBox*         mQuantitySpin;
-    QComboBox*        mCategoryCombo;
-    QComboBox*        mLocationCombo;
     QDialogButtonBox* mButtons;
+    int               mCategoryId;
+    int               mLocationId;
 
-    void populateCategories(const QString& connectionName);
-    void populateLocations(const QString& connectionName);
+    QString buildPath(const QString& connectionName, const QString& table, int id) const;
     void validate();
 };

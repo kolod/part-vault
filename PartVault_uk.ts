@@ -27,33 +27,33 @@
 <context>
     <name>AddPartDialog</name>
     <message>
-        <location filename="addpartdialog.cpp" line="32"/>
+        <location filename="addpartdialog.cpp" line="35"/>
         <source>Add Part</source>
         <translation>Додати компонент</translation>
     </message>
     <message>
-        <location filename="addpartdialog.cpp" line="45"/>
+        <location filename="addpartdialog.cpp" line="54"/>
         <source>Name:</source>
         <translation>Назва:</translation>
     </message>
     <message>
-        <location filename="addpartdialog.cpp" line="46"/>
+        <location filename="addpartdialog.cpp" line="55"/>
         <source>Quantity:</source>
         <translation>Кількість:</translation>
     </message>
     <message>
-        <location filename="addpartdialog.cpp" line="47"/>
+        <location filename="addpartdialog.cpp" line="56"/>
         <source>Category:</source>
         <translation>Категорія:</translation>
     </message>
     <message>
-        <location filename="addpartdialog.cpp" line="48"/>
+        <location filename="addpartdialog.cpp" line="57"/>
         <source>Storage location:</source>
         <translation>Місце зберігання:</translation>
     </message>
     <message>
-        <location filename="addpartdialog.cpp" line="85"/>
-        <location filename="addpartdialog.cpp" line="99"/>
+        <location filename="addpartdialog.cpp" line="48"/>
+        <location filename="addpartdialog.cpp" line="49"/>
         <source>(none)</source>
         <translation>(немає)</translation>
     </message>
@@ -84,7 +84,7 @@
 <context>
     <name>CategoryTreeModel</name>
     <message>
-        <location filename="categorytreemodel.cpp" line="237"/>
+        <location filename="categorytreemodel.cpp" line="284"/>
         <source>Category</source>
         <translation>Категорія</translation>
     </message>
@@ -109,32 +109,32 @@ Copyright (C) 2026-...  Олександр Колодкін</translation>
         <translation>Про Qt</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="133"/>
+        <location filename="mainwindow.cpp" line="135"/>
         <source>Remove Part</source>
         <translation>Видалити компонент</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="133"/>
+        <location filename="mainwindow.cpp" line="135"/>
         <source>Remove Part action triggered</source>
         <translation>Дію «Видалити компонент» викликано</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="138"/>
+        <location filename="mainwindow.cpp" line="140"/>
         <source>Remove Unused Category</source>
         <translation>Видалити невикористані категорії</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="138"/>
+        <location filename="mainwindow.cpp" line="140"/>
         <source>Remove Unused Category action triggered</source>
         <translation>Дію «Видалити невикористані категорії» викликано</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="143"/>
+        <location filename="mainwindow.cpp" line="145"/>
         <source>Remove Unused Storage Location</source>
         <translation>Видалити невикористані місця зберігання</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="143"/>
+        <location filename="mainwindow.cpp" line="145"/>
         <source>Remove Unused Storage Location action triggered</source>
         <translation>Дію «Видалити невикористані місця зберігання» викликано</translation>
     </message>
@@ -316,7 +316,7 @@ Copyright (C) 2026-...  Олександр Колодкін</translation>
 <context>
     <name>StorageTreeModel</name>
     <message>
-        <location filename="storagetreemodel.cpp" line="240"/>
+        <location filename="storagetreemodel.cpp" line="286"/>
         <source>Storage Location</source>
         <translation>Місце зберігання</translation>
     </message>

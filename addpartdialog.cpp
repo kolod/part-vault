@@ -18,96 +18,89 @@
 
 #include <QLineEdit>
 #include <QSpinBox>
-#include <QComboBox>
+#include <QLabel>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QPushButton>
+#include <QDebug>
 
-AddPartDialog::AddPartDialog(const QString& connectionName, QWidget* parent)
-    : QDialog(parent)
+AddPartDialog::AddPartDialog(const QString& connectionName, int categoryId, int locationId, QWidget* parent)
+    : QDialog(parent), mCategoryId(categoryId), mLocationId(locationId)
 {
     setWindowTitle(tr("Add Part"));
     setMinimumWidth(360);
 
-    mNameEdit      = new QLineEdit(this);
-    mQuantitySpin  = new QSpinBox(this);
-    mCategoryCombo = new QComboBox(this);
-    mLocationCombo = new QComboBox(this);
-    mButtons       = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    mNameEdit     = new QLineEdit(this);
+    mQuantitySpin = new QSpinBox(this);
+    mButtons      = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
 
     mQuantitySpin->setRange(0, 999999);
     mQuantitySpin->setValue(1);
 
+    const QString catPath = buildPath(connectionName, "categories", categoryId);
+    const QString locPath = buildPath(connectionName, "storage_locations", locationId);
+
+    auto* catLabel = new QLabel(catPath.isEmpty() ? tr("(none)") : catPath, this);
+    auto* locLabel = new QLabel(locPath.isEmpty() ? tr("(none)") : locPath, this);
+    catLabel->setWordWrap(true);
+    locLabel->setWordWrap(true);
+
     auto* form = new QFormLayout;
     form->addRow(tr("Name:"),             mNameEdit);
     form->addRow(tr("Quantity:"),         mQuantitySpin);
-    form->addRow(tr("Category:"),         mCategoryCombo);
-    form->addRow(tr("Storage location:"), mLocationCombo);
+    form->addRow(tr("Category:"),         catLabel);
+    form->addRow(tr("Storage location:"), locLabel);
 
     auto* layout = new QVBoxLayout(this);
     layout->addLayout(form);
     layout->addWidget(mButtons);
 
-    populateCategories(connectionName);
-    populateLocations(connectionName);
-    validate();
+    mButtons->button(QDialogButtonBox::Ok)->setEnabled(false);
 
     connect(mNameEdit, &QLineEdit::textChanged, this, &AddPartDialog::validate);
     connect(mButtons, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(mButtons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
-QString AddPartDialog::name() const
-{
+QString AddPartDialog::name() const {
     return mNameEdit->text().trimmed();
 }
 
-int AddPartDialog::quantity() const
-{
+int AddPartDialog::quantity() const {
     return mQuantitySpin->value();
 }
 
-int AddPartDialog::categoryId() const
-{
-    return mCategoryCombo->currentData().toInt();
+int AddPartDialog::categoryId() const {
+    return mCategoryId;
 }
 
-int AddPartDialog::locationId() const
-{
-    return mLocationCombo->currentData().toInt();
+int AddPartDialog::locationId() const {
+    return mLocationId;
 }
 
-void AddPartDialog::populateCategories(const QString& connectionName)
-{
-    mCategoryCombo->addItem(tr("(none)"), -1);
+QString AddPartDialog::buildPath(const QString& connectionName, const QString& table, int id) const {
+    if (id <= 0) return {};
 
     QSqlDatabase db = QSqlDatabase::database(connectionName);
-    QSqlQuery query(db);
-    // Exclude the virtual "All" root (id = 0); show every real category sorted by name.
-    query.prepare("SELECT id, name FROM categories WHERE id > 0 ORDER BY name");
-    if (!query.exec()) return;
-
-    while (query.next())
-        mCategoryCombo->addItem(query.value(1).toString(), query.value(0).toInt());
+    QSqlQuery q(db);
+    QStringList parts;
+    int current = id;
+    while (current > 0) {
+        q.prepare(QString("SELECT name, parent_id FROM %1 WHERE id = ?").arg(table));
+        q.addBindValue(current);
+        if (!q.exec() || !q.next()) {
+            qWarning() << "AddPartDialog: row" << current << "not found in" << table;
+            break;
+        }
+        parts.prepend(q.value(0).toString());
+        current = q.value(1).isNull() ? 0 : q.value(1).toInt();
+    }
+    return parts.join(QString(" \u2192 "));
 }
 
-void AddPartDialog::populateLocations(const QString& connectionName)
-{
-    mLocationCombo->addItem(tr("(none)"), -1);
-
-    QSqlDatabase db = QSqlDatabase::database(connectionName);
-    QSqlQuery query(db);
-    query.prepare("SELECT id, name FROM storage_locations ORDER BY name");
-    if (!query.exec()) return;
-
-    while (query.next())
-        mLocationCombo->addItem(query.value(1).toString(), query.value(0).toInt());
-}
-
-void AddPartDialog::validate()
-{
+void AddPartDialog::validate() {
     mButtons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());
 }
