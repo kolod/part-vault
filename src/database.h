@@ -36,6 +36,10 @@ public:
     int  addPart           (const QString& name, int quantity, int categoryId, int locationId);  // -1 → NULL FK
     int  addStorageLocation(const QString& name, int parentId = -1);  // parentId = -1 → no parent
 
+    // Returns number of rows deleted, or -1 on error.
+    int  removeUnusedCategories();
+    int  removeUnusedStorageLocations();
+
 private:
     QSqlDatabase mDatabase;
     QString mDbPath;

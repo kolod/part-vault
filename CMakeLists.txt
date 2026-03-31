@@ -9,12 +9,6 @@ qt_standard_project_setup()
 
 add_subdirectory(src)
 
-qt_add_translations(
-    TARGETS PartVault
-    TS_FILES PartVault_uk.ts
-    SOURCE_TARGETS PartVault
-)
-
 # ── Unit tests ────────────────────────────────────────────────────────────────
 if(ENABLE_TESTS)
     enable_testing()

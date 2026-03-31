@@ -14,7 +14,7 @@
    <string notr="true">PartVault</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="build/Desktop_Qt_6_11_0_llvm_mingw_64_bit-Debug/.qt/rcc/sql.qrc">
+   <iconset resource="../build/Desktop_Qt_6_11_0_llvm_mingw_64_bit-Debug/src/.qt/rcc/sql.qrc">
     <normaloff>:/icons/logo.svg</normaloff>:/icons/logo.svg</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -104,7 +104,7 @@
      <string>&amp;View</string>
     </property>
     <addaction name="actionCategories"/>
-   <addaction name="actionStorageLocations"/>
+    <addaction name="actionStorageLocations"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuParts"/>
@@ -213,7 +213,7 @@
   </action>
   <action name="actionAddSorageLocation">
    <property name="text">
-    <string>&amp;Add place</string>
+    <string>&amp;Add place...</string>
    </property>
   </action>
   <action name="actionRemoveUnusedStorageLocations">
@@ -265,7 +265,7 @@
   </action>
  </widget>
  <resources>
-  <include location="build/Desktop_Qt_6_11_0_llvm_mingw_64_bit-Debug/.qt/rcc/sql.qrc"/>
+  <include location="../build/Desktop_Qt_6_11_0_llvm_mingw_64_bit-Debug/src/.qt/rcc/sql.qrc"/>
  </resources>
  <connections/>
 </ui>

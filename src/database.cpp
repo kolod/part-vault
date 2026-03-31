@@ -159,6 +159,45 @@ int DatabaseManager::addStorageLocation(const QString& name, int parentId) {
     return q.lastInsertId().toInt();
 }
 
+int DatabaseManager::removeUnusedCategories() {
+    // A category is "used" if it directly holds a part OR is an ancestor of one.
+    // We walk UP from every category that has a part to mark all ancestors as used,
+    // then delete everything that is not used (excluding the virtual root id=0).
+    QSqlQuery q(mDatabase);
+    const bool ok = q.exec(
+        "WITH RECURSIVE used(id) AS ("
+        "  SELECT DISTINCT category_id FROM parts WHERE category_id IS NOT NULL"
+        "  UNION ALL"
+        "  SELECT c.parent_id FROM categories c JOIN used u ON c.id = u.id"
+        "   WHERE c.parent_id IS NOT NULL AND c.parent_id > 0"
+        ")"
+        "DELETE FROM categories WHERE id > 0 AND id NOT IN (SELECT id FROM used)"
+    );
+    if (!ok) {
+        qWarning() << "removeUnusedCategories failed:" << q.lastError().text();
+        return -1;
+    }
+    return q.numRowsAffected();
+}
+
+int DatabaseManager::removeUnusedStorageLocations() {
+    QSqlQuery q(mDatabase);
+    const bool ok = q.exec(
+        "WITH RECURSIVE used(id) AS ("
+        "  SELECT DISTINCT storage_location_id FROM parts WHERE storage_location_id IS NOT NULL"
+        "  UNION ALL"
+        "  SELECT s.parent_id FROM storage_locations s JOIN used u ON s.id = u.id"
+        "   WHERE s.parent_id IS NOT NULL AND s.parent_id > 0"
+        ")"
+        "DELETE FROM storage_locations WHERE id > 0 AND id NOT IN (SELECT id FROM used)"
+    );
+    if (!ok) {
+        qWarning() << "removeUnusedStorageLocations failed:" << q.lastError().text();
+        return -1;
+    }
+    return q.numRowsAffected();
+}
+
 bool DatabaseManager::resetDatabase() {
     closeDatabase();
 

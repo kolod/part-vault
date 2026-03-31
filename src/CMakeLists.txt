@@ -30,6 +30,12 @@ qt_add_resources(PartVault "sql"
         icons/logo.svg
 )
 
+qt_add_translations(
+    TARGETS PartVault
+    SOURCE_TARGETS PartVault
+    TS_FILES i18n/PartVault_uk.ts
+)
+
 target_include_directories(PartVault PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(PartVault

@@ -23,6 +23,7 @@
 #include "dialogs/addcategorydialog.h"
 #include "dialogs/addstoragelocationdialog.h"
 #include <QHeaderView>
+#include <QMenu>
 #include <QDebug>
 #include <functional>
 
@@ -136,13 +137,37 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     });
 
     // Remove Unused Category action
-    connect(ui->actionRemoveUnusedCategories, &QAction::triggered, this, []() {
-        QMessageBox::information(nullptr, tr("Remove Unused Category"), tr("Remove Unused Category action triggered"));
+    connect(ui->actionRemoveUnusedCategories, &QAction::triggered, this, [this]() {
+        if (QMessageBox::question(this, tr("Remove Unused Categories"),
+                tr("Delete all categories that have no parts assigned (directly or in any sub-category)?"))
+            != QMessageBox::Yes) return;
+        const int n = mDatabaseManager.removeUnusedCategories();
+        if (n < 0) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to remove unused categories."));
+        } else if (n == 0) {
+            QMessageBox::information(this, tr("Remove Unused Categories"), tr("No unused categories found."));
+        } else {
+            mCategoryModel->reload(ui->viewCategories);
+            QMessageBox::information(this, tr("Remove Unused Categories"),
+                tr("%n category(ies) removed.", nullptr, n));
+        }
     });
 
     // Remove Unused Storage Location action
-    connect(ui->actionRemoveUnusedStorageLocations, &QAction::triggered, this, []() {
-        QMessageBox::information(nullptr, tr("Remove Unused Storage Location"), tr("Remove Unused Storage Location action triggered"));
+    connect(ui->actionRemoveUnusedStorageLocations, &QAction::triggered, this, [this]() {
+        if (QMessageBox::question(this, tr("Remove Unused Storage Locations"),
+                tr("Delete all storage locations that have no parts assigned (directly or in any sub-location)?"))
+            != QMessageBox::Yes) return;
+        const int n = mDatabaseManager.removeUnusedStorageLocations();
+        if (n < 0) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to remove unused storage locations."));
+        } else if (n == 0) {
+            QMessageBox::information(this, tr("Remove Unused Storage Locations"), tr("No unused storage locations found."));
+        } else {
+            mStorageModel->reload(ui->viewStorageLocations);
+            QMessageBox::information(this, tr("Remove Unused Storage Locations"),
+                tr("%n location(s) removed.", nullptr, n));
+        }
     });
 
     // View Show/Hide Category Dock action
@@ -163,6 +188,24 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     // Keep the "Show Storage Locations" menu action in sync with the actual visibility of the dock widget
     connect(ui->dockStorageLocations, &QDockWidget::visibilityChanged, this, [this](bool visible) {
         ui->actionStorageLocations->setChecked(visible);
+    });
+
+    // Context menu for category tree
+    ui->viewCategories->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->viewCategories, &QTreeView::customContextMenuRequested, this, [this](const QPoint& pos) {
+        QMenu menu(this);
+        QAction* act = menu.addAction(tr("Add Category…"));
+        if (menu.exec(ui->viewCategories->viewport()->mapToGlobal(pos)) == act)
+            ui->actionAddCategory->trigger();
+    });
+
+    // Context menu for storage locations tree
+    ui->viewStorageLocations->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->viewStorageLocations, &QTreeView::customContextMenuRequested, this, [this](const QPoint& pos) {
+        QMenu menu(this);
+        QAction* act = menu.addAction(tr("Add Storage Location…"));
+        if (menu.exec(ui->viewStorageLocations->viewport()->mapToGlobal(pos)) == act)
+            ui->actionAddSorageLocation->trigger();
     });
 
     // Filter by category when a category is selected in the tree view
