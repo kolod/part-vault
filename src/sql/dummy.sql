@@ -132,17 +132,17 @@ INSERT OR IGNORE INTO parts (id, name, quantity, storage_location_id, category_i
     ( 54, 'STM32F103C8T6 72MHz LQFP-48',             10,  7, 44),
     ( 55, 'RP2040 133MHz QFN-56',                     8,  7, 44),
     ( 56, 'ESP32-D0WDQ6 240MHz QFN-48',               6,  7, 44),
-    ( 57, 'ATtiny85-20PU 20MHz DIP-8',               15,  7, 44),
+    ( 57, 'ATtiny85-20PU 20MHz DIP-8',                0,  7, 44),
     -- ── Logic Gates & Buffers ────────────────────────────────────────────
     ( 58, '74HC00 quad NAND SOIC-14',                30,  5, 58),
-    ( 59, '74HC04 hex inverter SOIC-14',             25,  5, 58),
+    ( 59, '74HC04 hex inverter SOIC-14',              0,  5, 58),
     ( 60, '74HC245 octal bus SOIC-20',               20,  5, 58),
     -- ── Timers ───────────────────────────────────────────────────────────
     ( 61, 'NE555P timer DIP-8',                      40,  5, 59),
-    ( 62, 'NE556N dual timer DIP-14',                15,  5, 59),
+    ( 62, 'NE556N dual timer DIP-14',                 0,  5, 59),
     -- ── Pin Headers & Sockets ────────────────────────────────────────────
     ( 63, 'Pin header 2.54mm 1x40 breakable M',      25, 10, 81),
-    ( 64, 'Pin header 2.54mm 2x20 M',                15, 10, 81),
+    ( 64, 'Pin header 2.54mm 2x20 M',                 0, 10, 81),
     ( 65, 'Socket 2.54mm 1x8 F',                     30, 10, 81),
     ( 66, 'Socket 2.54mm 2x3 F (ISP)',               20, 10, 81),
     -- ── USB Connectors ───────────────────────────────────────────────────

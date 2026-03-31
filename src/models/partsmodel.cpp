@@ -20,6 +20,8 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
+#include <QPalette>
+#include <QApplication>
 #include <QDebug>
 
 PartsModel::PartsModel(const QString& connectionName, QObject* parent)
@@ -218,6 +220,9 @@ QVariant PartsModel::data(const QModelIndex& index, int role) const
 
     if (role == Qt::TextAlignmentRole && index.column() == ColQuantity)
         return QVariant(Qt::AlignRight | Qt::AlignVCenter);
+
+    if (role == Qt::ForegroundRole && p.quantity == 0)
+        return QApplication::palette().color(QPalette::Disabled, QPalette::Text);
 
     return {};
 }
