@@ -25,11 +25,10 @@
 #include <QSet>
 #include <QPalette>
 #include <QApplication>
-#include <QTreeView>
 #include <functional>
 
 StorageTreeModel::StorageTreeModel(const QString& connectionName, QObject* parent)
-    : QAbstractItemModel(parent), mConnectionName(connectionName)
+    : ReloadableTreeModel(parent), mConnectionName(connectionName)
 {
     mRoot = new StorageNode{-1, QString{}};
     buildTree();
@@ -47,30 +46,6 @@ void StorageTreeModel::reload()
     mRoot = new StorageNode{-1, QString{}};
     buildTree();
     endResetModel();
-}
-
-void StorageTreeModel::reload(QTreeView* view)
-{
-    QSet<int> expandedIds;
-    QList<QModelIndex> stack;
-    for (int r = 0; r < rowCount(); ++r)
-        stack.append(index(r, 0));
-    while (!stack.isEmpty()) {
-        const QModelIndex idx = stack.takeLast();
-        if (view->isExpanded(idx)) {
-            expandedIds.insert(locationId(idx));
-            for (int r = 0; r < rowCount(idx); ++r)
-                stack.append(index(r, 0, idx));
-        }
-    }
-
-    reload();
-
-    for (int id : std::as_const(expandedIds)) {
-        const QModelIndex idx = indexForId(id);
-        if (idx.isValid())
-            view->expand(idx);
-    }
 }
 
 void StorageTreeModel::buildTree()

@@ -16,12 +16,10 @@
 
 #pragma once
 
-#include <QAbstractItemModel>
+#include "reloadabletreemodel.h"
 #include <QString>
 #include <QList>
 #include <QSet>
-
-class QTreeView;
 
 // Internal tree node — one per category row.
 struct CategoryNode
@@ -35,7 +33,7 @@ struct CategoryNode
     ~CategoryNode() { qDeleteAll(children); }
 };
 
-class CategoryTreeModel : public QAbstractItemModel
+class CategoryTreeModel : public ReloadableTreeModel
 {
     Q_OBJECT
 
@@ -49,10 +47,7 @@ public:
     ~CategoryTreeModel() override;
 
     // Reloads the entire tree from the database.
-    void reload();
-
-    // Reloads while preserving the expanded state of the given view.
-    void reload(QTreeView* view);
+    void reload() override;
 
     // Returns the category id for the given index, or -1 if invalid.
     int categoryId(const QModelIndex& index) const;
@@ -72,6 +67,24 @@ public:
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
     Qt::ItemFlags flags(const QModelIndex& index) const override;
+
+    // Drag & drop
+    Qt::DropActions supportedDropActions() const override;
+    QStringList     mimeTypes() const override;
+    QMimeData*      mimeData(const QModelIndexList& indexes) const override;
+    bool canDropMimeData(const QMimeData* data, Qt::DropAction action,
+                         int row, int column, const QModelIndex& parent) const override;
+    bool dropMimeData(const QMimeData* data, Qt::DropAction action,
+                      int row, int column, const QModelIndex& parent) override;
+
+    // Call this from the controller after the user confirms the reparent.
+    // Returns true on success; caller is responsible for reloading the view.
+    bool reparentCategory(int categoryId, int newParentId);
+
+signals:
+    // Emitted when a drag-drop reparent is requested; controller should confirm
+    // and call reparentCategory() if accepted.
+    void reparentRequested(int categoryId, int newParentId);
 
 private:
     QString        mConnectionName;

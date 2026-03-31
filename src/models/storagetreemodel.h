@@ -16,12 +16,10 @@
 
 #pragma once
 
-#include <QAbstractItemModel>
+#include "reloadabletreemodel.h"
 #include <QString>
 #include <QList>
 #include <QSet>
-
-class QTreeView;
 
 // Internal tree node — one per storage_locations row.
 struct StorageNode
@@ -35,7 +33,7 @@ struct StorageNode
     ~StorageNode() { qDeleteAll(children); }
 };
 
-class StorageTreeModel : public QAbstractItemModel
+class StorageTreeModel : public ReloadableTreeModel
 {
     Q_OBJECT
 
@@ -47,8 +45,7 @@ public:
     explicit StorageTreeModel(const QString& connectionName, QObject* parent = nullptr);
     ~StorageTreeModel() override;
 
-    void reload();
-    void reload(QTreeView* view);
+    void reload() override;
 
     // Returns the location id for the given index, or -1 if invalid.
     int locationId(const QModelIndex& index) const;

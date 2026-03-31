@@ -25,11 +25,14 @@
 #include <QSet>
 #include <QPalette>
 #include <QApplication>
-#include <QTreeView>
+#include <QMimeData>
+#include <QDataStream>
+#include <QIODevice>
+#include <QTimer>
 #include <functional>
 
 CategoryTreeModel::CategoryTreeModel(const QString& connectionName, QObject* parent)
-    : QAbstractItemModel(parent), mConnectionName(connectionName)
+    : ReloadableTreeModel(parent), mConnectionName(connectionName)
 {
     mRoot = new CategoryNode{-1, QString{}};
     buildTree();
@@ -45,31 +48,6 @@ void CategoryTreeModel::reload() {
     mRoot = new CategoryNode{-1, QString{}};
     buildTree();
     endResetModel();
-}
-
-void CategoryTreeModel::reload(QTreeView* view) {
-    // Collect the IDs of currently expanded nodes.
-    QSet<int> expandedIds;
-    QList<QModelIndex> stack;
-    for (int r = 0; r < rowCount(); ++r)
-        stack.append(index(r, 0));
-    while (!stack.isEmpty()) {
-        const QModelIndex idx = stack.takeLast();
-        if (view->isExpanded(idx)) {
-            expandedIds.insert(categoryId(idx));
-            for (int r = 0; r < rowCount(idx); ++r)
-                stack.append(index(r, 0, idx));
-        }
-    }
-
-    reload();   // resets the model
-
-    // Re-expand nodes whose IDs were expanded before.
-    for (int id : std::as_const(expandedIds)) {
-        const QModelIndex idx = indexForId(id);
-        if (idx.isValid())
-            view->expand(idx);
-    }
 }
 
 void CategoryTreeModel::buildTree() {
@@ -287,6 +265,95 @@ QVariant CategoryTreeModel::headerData(int section, Qt::Orientation orientation,
 }
 
 Qt::ItemFlags CategoryTreeModel::flags(const QModelIndex& index) const {
-    if (!index.isValid()) return Qt::NoItemFlags;
-    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    if (!index.isValid())
+        return Qt::ItemIsDropEnabled;   // allow drop onto empty viewport
+
+    CategoryNode* node = nodeFromIndex(index);
+    Qt::ItemFlags f = Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDropEnabled;
+    if (node->id > 0)                   // "All" (id=0) is not draggable
+        f |= Qt::ItemIsDragEnabled;
+    return f;
+}
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+
+static const QString kMimeType = QStringLiteral("application/x-partvault-category-id");
+
+Qt::DropActions CategoryTreeModel::supportedDropActions() const {
+    return Qt::MoveAction;
+}
+
+QStringList CategoryTreeModel::mimeTypes() const {
+    return {kMimeType};
+}
+
+QMimeData* CategoryTreeModel::mimeData(const QModelIndexList& indexes) const {
+    if (indexes.isEmpty()) return nullptr;
+    const int id = categoryId(indexes.first());
+    if (id <= 0) return nullptr;
+    QByteArray ba;
+    QDataStream ds(&ba, QIODevice::WriteOnly);
+    ds << id;
+    auto* mime = new QMimeData;
+    mime->setData(kMimeType, ba);
+    return mime;
+}
+
+bool CategoryTreeModel::canDropMimeData(const QMimeData* data, Qt::DropAction action,
+                                         int, int, const QModelIndex& parent) const {
+    if (action != Qt::MoveAction) return false;
+    if (!data->hasFormat(kMimeType)) return false;
+
+    QByteArray ba = data->data(kMimeType);
+    QDataStream ds(&ba, QIODevice::ReadOnly);
+    int draggedId; ds >> draggedId;
+    if (draggedId <= 0) return false;
+
+    // Can't drop onto itself or onto one of its descendants
+    CategoryNode* target = parent.isValid() ? nodeFromIndex(parent) : nullptr;
+    while (target && target != mRoot) {
+        if (target->id == draggedId) return false;
+        target = target->parent;
+    }
+    return true;
+}
+
+bool CategoryTreeModel::dropMimeData(const QMimeData* data, Qt::DropAction action,
+                                      int row, int column, const QModelIndex& parent) {
+    if (!canDropMimeData(data, action, row, column, parent)) return false;
+
+    QByteArray ba = data->data(kMimeType);
+    QDataStream ds(&ba, QIODevice::ReadOnly);
+    int draggedId; ds >> draggedId;
+
+    const int newParentId = parent.isValid() ? categoryId(parent) : 0;
+
+    // Check it's actually a change
+    CategoryNode* dragged = nullptr;
+    QList<CategoryNode*> stack = mRoot->children;
+    while (!stack.isEmpty()) {
+        CategoryNode* n = stack.takeFirst();
+        if (n->id == draggedId) { dragged = n; break; }
+        stack.append(n->children);
+    }
+    if (!dragged) return false;
+    const int currentParentId = dragged->parent ? dragged->parent->id : 0;
+    if (currentParentId == newParentId) return false;
+
+    // Delegate to controller for confirmation; return false so Qt does nothing
+    emit reparentRequested(draggedId, newParentId);
+    return false;
+}
+
+bool CategoryTreeModel::reparentCategory(int categoryId, int newParentId) {
+    QSqlDatabase db = QSqlDatabase::database(mConnectionName);
+    QSqlQuery q(db);
+    q.prepare("UPDATE categories SET parent_id = ? WHERE id = ?");
+    q.addBindValue(newParentId);
+    q.addBindValue(categoryId);
+    if (!q.exec()) {
+        qWarning() << "CategoryTreeModel: reparent failed:" << q.lastError().text();
+        return false;
+    }
+    return true;
 }

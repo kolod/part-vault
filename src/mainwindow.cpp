@@ -44,6 +44,11 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Category tree view
     ui->viewCategories->setModel(mCategoryModel);
+    ui->viewCategories->setDragEnabled(true);
+    ui->viewCategories->setAcceptDrops(true);
+    ui->viewCategories->setDropIndicatorShown(true);
+    ui->viewCategories->setDragDropMode(QAbstractItemView::DragDrop);
+    ui->viewCategories->setDefaultDropAction(Qt::MoveAction);
 
     // Storage locations tree view
     ui->viewStorageLocations->setModel(mStorageModel);
@@ -88,7 +93,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
         const int newId = mDatabaseManager.addCategory(dlg.name(), dlg.parentId());
         if (newId >= 0) {
-            mCategoryModel->reload(ui->viewCategories);
+            ui->viewCategories->reloadPreservingExpanded();
             const QModelIndex newIndex = mCategoryModel->indexForId(newId);
             if (newIndex.isValid()) {
                 ui->viewCategories->expand(newIndex.parent());
@@ -121,7 +126,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
         const int newId = mDatabaseManager.addStorageLocation(dlg.name(), dlg.parentId());
         if (newId >= 0) {
-            mStorageModel->reload(ui->viewStorageLocations);
+            ui->viewStorageLocations->reloadPreservingExpanded();
             const QModelIndex newIndex = mStorageModel->indexForId(newId);
             if (newIndex.isValid()) {
                 ui->viewStorageLocations->expand(newIndex.parent());
@@ -147,7 +152,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         } else if (n == 0) {
             QMessageBox::information(this, tr("Remove Unused Categories"), tr("No unused categories found."));
         } else {
-            mCategoryModel->reload(ui->viewCategories);
+            ui->viewCategories->reloadPreservingExpanded();
             QMessageBox::information(this, tr("Remove Unused Categories"),
                 tr("%n category(ies) removed.", nullptr, n));
         }
@@ -164,7 +169,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         } else if (n == 0) {
             QMessageBox::information(this, tr("Remove Unused Storage Locations"), tr("No unused storage locations found."));
         } else {
-            mStorageModel->reload(ui->viewStorageLocations);
+            ui->viewStorageLocations->reloadPreservingExpanded();
             QMessageBox::information(this, tr("Remove Unused Storage Locations"),
                 tr("%n location(s) removed.", nullptr, n));
         }
@@ -197,6 +202,20 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         QAction* act = menu.addAction(tr("Add Category…"));
         if (menu.exec(ui->viewCategories->viewport()->mapToGlobal(pos)) == act)
             ui->actionAddCategory->trigger();
+    });
+
+    // Drag & drop reparent confirmation
+    connect(mCategoryModel, &CategoryTreeModel::reparentRequested, this, [this](int categoryId, int newParentId) {
+        const QString catName    = mCategoryModel->data(mCategoryModel->indexForId(categoryId)).toString();
+        const QString parentName = (newParentId == 0)
+            ? tr("top level")
+            : mCategoryModel->data(mCategoryModel->indexForId(newParentId)).toString();
+        if (QMessageBox::question(this, tr("Move Category"),
+                tr("Move \"%1\" into \"%2\"?").arg(catName, parentName))
+            != QMessageBox::Yes) return;
+        mCategoryModel->reparentCategory(categoryId, newParentId);
+        ui->viewCategories->reloadPreservingExpanded();
+        ui->viewCategories->setCurrentIndex(mCategoryModel->indexForId(categoryId));
     });
 
     // Context menu for storage locations tree

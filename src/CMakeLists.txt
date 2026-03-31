@@ -8,10 +8,13 @@ qt_add_executable(PartVault
     database.h
     models/categorytreemodel.cpp
     models/categorytreemodel.h
+    models/reloadabletreemodel.h
     models/storagetreemodel.cpp
     models/storagetreemodel.h
     models/partsmodel.cpp
     models/partsmodel.h
+    views/expandabletreeview.cpp
+    views/expandabletreeview.h
     dialogs/addpartdialog.cpp
     dialogs/addpartdialog.h
     dialogs/addcategorydialog.cpp
