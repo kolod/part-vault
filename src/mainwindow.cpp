@@ -137,8 +137,24 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     });
 
     // Remove Part action
-    connect(ui->actionRemovePart, &QAction::triggered, this, []() {
-        QMessageBox::information(nullptr, tr("Remove Part"), tr("Remove Part action triggered"));
+    connect(ui->actionRemovePart, &QAction::triggered, this, [this]() {
+        const QModelIndex idx = ui->tableView->currentIndex();
+        if (!idx.isValid()) return;
+        const int partId = mPartsModel->partId(idx.row());
+        const QString name = mPartsModel->data(mPartsModel->index(idx.row(), PartsModel::ColName)).toString();
+
+        // Confirm deletion
+        if (QMessageBox::question(this, tr("Remove Part"), tr("Delete \"%1\"?").arg(name)) != QMessageBox::Yes) 
+            return;
+
+        // Attempt deletion
+        if (!mDatabaseManager.removePart(partId)) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to delete the part."));
+            return;
+        }
+
+        // Refresh the parts list
+        mPartsModel->reload();
     });
 
     // Remove Unused Category action

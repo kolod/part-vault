@@ -144,6 +144,17 @@ int DatabaseManager::addPart(const QString& name, int quantity, int categoryId, 
     return q.lastInsertId().toInt();
 }
 
+bool DatabaseManager::removePart(int partId) {
+    QSqlQuery q(mDatabase);
+    q.prepare("DELETE FROM parts WHERE id = ?");
+    q.addBindValue(partId);
+    if (!q.exec()) {
+        qWarning() << "removePart failed:" << q.lastError().text();
+        return false;
+    }
+    return q.numRowsAffected() > 0;
+}
+
 int DatabaseManager::addStorageLocation(const QString& name, int parentId) {
     QSqlQuery q(mDatabase);
     q.prepare("INSERT INTO storage_locations (name, parent_id) VALUES (?, ?)");
