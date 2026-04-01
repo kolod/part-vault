@@ -325,6 +325,19 @@ void MainWindow::restoreSession() {
             ui->viewStorageLocations->scrollTo(idx);
         }
     }
+
+    // Restore selected part
+    const int selectedPartId = settings.value("parts/selected", 0).toInt();
+    if (selectedPartId > 0) {
+        for (int r = 0; r < mPartsModel->rowCount(); ++r) {
+            if (mPartsModel->partId(r) == selectedPartId) {
+                const QModelIndex idx = mPartsModel->index(r, 0);
+                ui->tableView->setCurrentIndex(idx);
+                ui->tableView->scrollTo(idx);
+                break;
+            }
+        }
+    }
 }
 
 void MainWindow::saveSession() {
@@ -366,6 +379,10 @@ void MainWindow::saveSession() {
     // Save selected storage location ID
     const int selectedStorageId = mStorageModel->locationId(ui->viewStorageLocations->currentIndex());
     settings.setValue("storage/selected", selectedStorageId);
+
+    // Save selected part ID
+    const int selectedPartId = mPartsModel->partId(ui->tableView->currentIndex().row());
+    settings.setValue("parts/selected", selectedPartId > 0 ? selectedPartId : 0);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event) {
