@@ -26,6 +26,9 @@
 #include <QHeaderView>
 #include <QMenu>
 #include <QDebug>
+#include <QDesktopServices>
+#include <QFileInfo>
+#include <QUrl>
 #include <functional>
 
 MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
@@ -39,8 +42,8 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     const QString conn = mDatabaseManager.database().connectionName();
 
     // Create models
-    mPartsModel = new PartsModel(conn, this);
-    mFilesModel = new FilesModel(conn, this);
+    mPartsModel    = new PartsModel(conn, this);
+    mFilesModel    = new FilesModel(conn, this);
     mCategoryModel = new CategoryTreeModel(conn, this);
     mStorageModel  = new StorageTreeModel(conn, this);
 
@@ -69,6 +72,78 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     // Files list view
     ui->viewFiles->setModel(mFilesModel);
     ui->viewFiles->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->viewFiles->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    const auto filePathForIndex = [this](const QModelIndex& index) {
+        if (!index.isValid()) return QString();
+        return mFilesModel->data(mFilesModel->index(index.row(), FilesModel::ColPath)).toString();
+    };
+
+    const auto openFileAtIndex = [this, filePathForIndex](const QModelIndex& index) {
+        const QString path = filePathForIndex(index);
+        if (path.isEmpty()) return;
+
+        const QString absPath = mDatabaseManager.absolutePath(path);
+        if (!QFile::exists(absPath)) {
+            QMessageBox::warning(this, tr("File Not Found"), tr("The file could not be found:\n%1").arg(absPath));
+            return;
+        }
+
+        QDesktopServices::openUrl(QUrl::fromLocalFile(absPath));
+    };
+
+    const auto openFileDirAtIndex = [this, filePathForIndex](const QModelIndex& index) {
+        const QString path = filePathForIndex(index);
+        if (path.isEmpty()) return;
+
+        const QString absPath = mDatabaseManager.absolutePath(path);
+        const QString dirPath = QFileInfo(absPath).absolutePath();
+        if (!QFileInfo::exists(dirPath)) {
+            QMessageBox::warning(this, tr("Directory Not Found"), tr("The directory could not be found:\n%1").arg(dirPath));
+            return;
+        }
+
+        QDesktopServices::openUrl(QUrl::fromLocalFile(dirPath));
+    };
+
+    const auto updateFileActions = [this]() {
+        const bool hasSelection = ui->viewFiles->currentIndex().isValid();
+        ui->actionOpenFile->setEnabled(hasSelection);
+        ui->actionOpenDirectory->setEnabled(hasSelection);
+    };
+
+    // Open the file when the user double-clicks (or presses Enter) on a row.
+    connect(ui->viewFiles, &QAbstractItemView::activated, this, openFileAtIndex);
+
+    connect(ui->actionOpenFile, &QAction::triggered, this, [this, openFileAtIndex]() {
+        openFileAtIndex(ui->viewFiles->currentIndex());
+    });
+    connect(ui->actionOpenDirectory, &QAction::triggered, this, [this, openFileDirAtIndex]() {
+        openFileDirAtIndex(ui->viewFiles->currentIndex());
+    });
+
+    connect(ui->viewFiles->selectionModel(), &QItemSelectionModel::currentChanged, this,
+            [updateFileActions](const QModelIndex&, const QModelIndex&) {
+        updateFileActions();
+    });
+    connect(mFilesModel, &QAbstractItemModel::modelReset, this, updateFileActions);
+    updateFileActions();
+
+    // Context menu for files view
+    connect(ui->viewFiles, &QWidget::customContextMenuRequested, this, [this, updateFileActions](const QPoint& pos) {
+        const QModelIndex index = ui->viewFiles->indexAt(pos);
+        if (index.isValid()) {
+            ui->viewFiles->setCurrentIndex(index);
+        }
+
+        updateFileActions();
+
+        QMenu menu(this);
+        menu.addAction(ui->actionOpenFile);
+        menu.addAction(ui->actionOpenDirectory);
+
+        menu.exec(ui->viewFiles->viewport()->mapToGlobal(pos));
+    });
 
     // Menu actions
 
@@ -177,6 +252,23 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
             ui->viewCategories->reloadPreservingExpanded();
             QMessageBox::information(this, tr("Remove Unused Categories"),
                 tr("%n category(ies) removed.", nullptr, n));
+        }
+    });
+
+    // Remove Unused Files action
+    connect(ui->actionRemoveUnusedFiles, &QAction::triggered, this, [this]() {
+        if (QMessageBox::question(this, tr("Remove Unused Files"),
+                tr("Delete all files that are not linked to any part? This also removes the physical files from disk when they exist."))
+            != QMessageBox::Yes) return;
+        const int n = mDatabaseManager.removeUnusedFiles();
+        if (n < 0) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to remove unused files."));
+        } else if (n == 0) {
+            QMessageBox::information(this, tr("Remove Unused Files"), tr("No unused files found."));
+        } else {
+            mFilesModel->reload();
+            QMessageBox::information(this, tr("Remove Unused Files"),
+                tr("%n file(s) removed.", nullptr, n));
         }
     });
 

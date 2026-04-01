@@ -207,7 +207,11 @@ INSERT OR IGNORE INTO files (id, path, type, description) VALUES
     (21, 'cad/breakout_stm32f103.kicad_sch',  'cad',       'STM32F103 minimal breakout schematic'),
     (22, 'cad/power_supply_lm2596.kicad_sch', 'cad',       'LM2596 buck converter schematic'),
     (23, 'cad/sensor_ds18b20.kicad_sch',      'cad',       'DS18B20 sensor circuit schematic'),
-    (24, 'cad/imu_mpu6050.kicad_sch',         'cad',       'MPU-6050 IMU breakout schematic');
+    (24, 'cad/imu_mpu6050.kicad_sch',         'cad',       'MPU-6050 IMU breakout schematic'),
+    -- Unused files for cleanup testing
+    (25, 'datasheets/spare_opamp.pdf',        'datasheet', 'Unused spare op-amp datasheet'),
+    (26, 'models/test_socket.step',           'model',     'Unused IC socket STEP model'),
+    (27, 'cad/reference_filter.kicad_sch',    'cad',       'Unused RC filter reference schematic');
 
 -- -----------------------------------------------------------------------------
 -- File associations

@@ -128,6 +128,11 @@
         <translation>&amp;Вигляд</translation>
     </message>
     <message>
+        <location filename="../mainwindow.ui" line="76"/>
+        <source>Fi&amp;les</source>
+        <translation>&amp;Файли</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.ui" line="118"/>
         <source>Categories</source>
         <translation>Категорії</translation>
@@ -136,6 +141,12 @@
         <location filename="../mainwindow.ui" line="152"/>
         <source>Storage Locations</source>
         <translation>Місця зберігання</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="186"/>
+        <location filename="../mainwindow.ui" line="302"/>
+        <source>Files</source>
+        <translation>Файли</translation>
     </message>
     <message>
         <location filename="../mainwindow.ui" line="186"/>
@@ -199,6 +210,21 @@
         <translation>&amp;Місця зберігання</translation>
     </message>
     <message>
+        <location filename="../mainwindow.ui" line="310"/>
+        <source>Open &amp;File</source>
+        <translation>Відкрити &amp;файл</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="317"/>
+        <source>Open &amp;Directory</source>
+        <translation>Відкрити &amp;каталог</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.ui" line="322"/>
+        <source>&amp;Remove unused files</source>
+        <translation>&amp;Видалити невикористані файли</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="69"/>
         <source>About PartVault</source>
         <translation>Про PartVault</translation>
@@ -216,6 +242,30 @@ Copyright (C) 2026-...  Олександр Колодкін</translation>
         <translation>Про Qt</translation>
     </message>
     <message>
+        <location filename="../mainwindow.cpp" line="88"/>
+        <source>File Not Found</source>
+        <translation>Файл не знайдено</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="88"/>
+        <source>The file could not be found:
+%1</source>
+        <translation>Не вдалося знайти файл:
+%1</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="100"/>
+        <source>Directory Not Found</source>
+        <translation>Каталог не знайдено</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="100"/>
+        <source>The directory could not be found:
+%1</source>
+        <translation>Не вдалося знайти каталог:
+%1</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="136"/>
         <source>Remove Part</source>
         <translation>Видалити компонент</translation>
@@ -231,6 +281,37 @@ Copyright (C) 2026-...  Олександр Колодкін</translation>
         <location filename="../mainwindow.cpp" line="151"/>
         <source>Remove Unused Categories</source>
         <translation>Видалити невикористані категорії</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="260"/>
+        <location filename="../mainwindow.cpp" line="267"/>
+        <location filename="../mainwindow.cpp" line="269"/>
+        <source>Remove Unused Files</source>
+        <translation>Видалити невикористані файли</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="261"/>
+        <source>Delete all files that are not linked to any part? This also removes the physical files from disk when they exist.</source>
+        <translation>Видалити всі файли, які не пов’язані з жодним компонентом? Це також видалить фізичні файли з диска, якщо вони існують.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="265"/>
+        <source>Failed to remove unused files.</source>
+        <translation>Не вдалося видалити невикористані файли.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="267"/>
+        <source>No unused files found.</source>
+        <translation>Невикористаних файлів не знайдено.</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../mainwindow.cpp" line="270"/>
+        <source>%n file(s) removed.</source>
+        <translation>
+            <numerusform>%n файл видалено.</numerusform>
+            <numerusform>%n файли видалено.</numerusform>
+            <numerusform>%n файлів видалено.</numerusform>
+        </translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="142"/>

@@ -25,6 +25,8 @@
 #include <QCommandLineOption>
 #include <QDebug>
 #include <QDirIterator>
+#include <QStandardPaths>
+#include <QDir>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -220,17 +222,30 @@ int main(int argc, char *argv[]) {
     }
 
     // Initialize the database manager and open the database connection.
-    DatabaseManager databaseManager("partvault.db");
+    QString dataDir = QDir::homePath() + "/.partvault";
 
-    if (wantReset) {
-        if (!databaseManager.resetDatabase()) qFatal() << "Failed to reset database.";
-    } else {
-        if (!databaseManager.openDatabase())  qFatal() << "Failed to open database.";
+    // Ensure the data directory exists, creating it if necessary.
+    if (!QDir().mkpath(dataDir)) {
+        qCritical() << "Failed to create writable data directory:" << dataDir;
+        return 1;
     }
 
-    if (wantDummy) {
-        if (!databaseManager.addDummyData()) qCritical() << "Failed to load dummy data.";
-    }
+    // The database file will be located inside the data directory.
+    const QString dbPath = QDir(dataDir).filePath("parts.db");
+    qDebug() << "Using database file:" << dbPath;
+
+    DatabaseManager databaseManager(dbPath);
+
+    // If --reset is specified, the database will be dropped and recreated.
+    // This is useful for testing or recovering from a corrupted database.
+    if (!databaseManager.openDatabase(wantReset))
+        qFatal() << "Failed to open database.";
+
+    // If --dummy is specified, populate the database with sample data.
+    // This is useful for testing or demo purposes.
+    if (wantDummy)
+        if (!databaseManager.addDummyData())
+            qCritical() << "Failed to load dummy data.";
 
     // Start the main window and restore the previous session (e.g. open tabs, etc.).
     MainWindow w(databaseManager);

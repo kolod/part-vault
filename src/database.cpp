@@ -17,9 +17,88 @@
 #include "database.h"
 #include "utils.h"
 #include <QFile>
+#include <QFileInfo>
 #include <QDebug>
 
-DatabaseManager::DatabaseManager(const QString& dbPath) : mDbPath(dbPath) {
+namespace {
+
+QByteArray dummyFileContents(const QString& path, const QString& type, const QString& description) {
+    if (path.endsWith(".pdf", Qt::CaseInsensitive)) {
+        return QByteArrayLiteral(
+            "%PDF-1.1\n"
+            "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            "2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj\n"
+            "3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 144]/Contents 4 0 R"
+            "/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
+            "4 0 obj<</Length 44>>stream\n"
+            "BT /F1 18 Tf 36 96 Td (PartVault dummy PDF) Tj ET\n"
+            "endstream endobj\n"
+            "5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n"
+            "xref\n0 6\n"
+            "0000000000 65535 f \n"
+            "0000000009 00000 n \n"
+            "0000000058 00000 n \n"
+            "0000000115 00000 n \n"
+            "0000000241 00000 n \n"
+            "0000000335 00000 n \n"
+            "trailer<</Size 6/Root 1 0 R>>\nstartxref\n405\n%%EOF\n"
+        );
+    }
+
+    if (path.endsWith(".step", Qt::CaseInsensitive)) {
+        return QByteArrayLiteral(
+            "ISO-10303-21;\n"
+            "HEADER;\n"
+            "FILE_DESCRIPTION(('PartVault dummy STEP'),'2;1');\n"
+            "FILE_NAME('dummy.step','2026-04-01T00:00:00',('PartVault'),('PartVault'),'','','');\n"
+            "FILE_SCHEMA(('CONFIG_CONTROL_DESIGN'));\n"
+            "ENDSEC;\n"
+            "DATA;\n"
+            "ENDSEC;\n"
+            "END-ISO-10303-21;\n"
+        );
+    }
+
+    return QString(
+        "PartVault dummy file\n"
+        "Type: %1\n"
+        "Path: %2\n"
+        "Description: %3\n"
+    ).arg(type, path, description).toUtf8();
+}
+
+bool createDummyFile(const QString& absPath, const QString& relativePath, const QString& type, const QString& description) {
+    const QFileInfo fileInfo(absPath);
+    QDir parentDir = fileInfo.dir();
+    if (!parentDir.exists() && !QDir().mkpath(parentDir.path())) {
+        qWarning() << "Failed to create dummy file directory:" << parentDir.path();
+        return false;
+    }
+
+    if (QFile::exists(absPath)) {
+        return true;
+    }
+
+    QFile file(absPath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning() << "Failed to create dummy file:" << absPath;
+        return false;
+    }
+
+    const QByteArray contents = dummyFileContents(relativePath, type, description);
+    if (file.write(contents) != contents.size()) {
+        qWarning() << "Failed to write dummy file:" << absPath;
+        return false;
+    }
+
+    return true;
+}
+
+} // namespace
+
+DatabaseManager::DatabaseManager(const QString& dbPath)
+    : mDbPath(dbPath), mDbDir(QFileInfo(dbPath).absolutePath())
+{
     mDatabase = QSqlDatabase::addDatabase("QSQLITE");
     mDatabase.setDatabaseName(mDbPath);
 }
@@ -28,8 +107,34 @@ DatabaseManager::~DatabaseManager() {
     closeDatabase();
 }
 
-bool DatabaseManager::openDatabase() {
-    // Check if the database file exists; if not, it will be created when we open it
+bool DatabaseManager::ensureStorageDirectories() {
+    QDir dbDir(mDbDir);
+    const QStringList requiredDirs = {"cad", "datasheets", "models"};
+
+    for (const QString& dirName : requiredDirs) {
+        if (!dbDir.mkpath(dirName)) {
+            qCritical() << "Failed to create storage directory:" << dbDir.filePath(dirName);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool DatabaseManager::openDatabase(bool reset) {
+    if (reset) {
+        closeDatabase();
+        if (QFile::exists(mDbPath) && !QFile::remove(mDbPath)) {
+            qCritical() << "openDatabase(reset): could not delete" << mDbPath;
+            return false;
+        }
+        qDebug() << "Database file removed, re-opening...";
+    }
+
+    if (!ensureStorageDirectories()) {
+        return false;
+    }
+
     if (!mDatabase.open()) {
         qWarning() << "Failed to open database:" << mDatabase.lastError().text();
         return false;
@@ -106,7 +211,27 @@ bool DatabaseManager::initializeDatabase() {
 }
 
 bool DatabaseManager::addDummyData() {
-    return executeScript(":/sql/dummy.sql");
+    if (!executeScript(":/sql/dummy.sql")) {
+        return false;
+    }
+
+    QSqlQuery query(mDatabase);
+    if (!query.exec("SELECT path, type, COALESCE(description, '') FROM files ORDER BY id")) {
+        qWarning() << "addDummyData failed to query dummy files:" << query.lastError().text();
+        return false;
+    }
+
+    while (query.next()) {
+        const QString relativePath = query.value(0).toString();
+        const QString type = query.value(1).toString();
+        const QString description = query.value(2).toString();
+        const QString absPath = absolutePath(relativePath);
+        if (!createDummyFile(absPath, relativePath, type, description)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 int DatabaseManager::addCategory(const QString& name, int parentId) {
@@ -191,6 +316,62 @@ int DatabaseManager::removeUnusedCategories() {
     return q.numRowsAffected();
 }
 
+int DatabaseManager::removeUnusedFiles() {
+    QSqlQuery selectQuery(mDatabase);
+    const bool selectOk = selectQuery.exec(
+        "SELECT f.id, f.path "
+        "FROM files AS f "
+        "LEFT JOIN part_files AS pf ON pf.file_id = f.id "
+        "WHERE pf.file_id IS NULL"
+    );
+    if (!selectOk) {
+        qWarning() << "removeUnusedFiles select failed:" << selectQuery.lastError().text();
+        return -1;
+    }
+
+    QList<QPair<int, QString>> unusedFiles;
+    while (selectQuery.next()) {
+        unusedFiles.append({selectQuery.value(0).toInt(), selectQuery.value(1).toString()});
+    }
+
+    if (unusedFiles.isEmpty()) {
+        return 0;
+    }
+
+    if (!mDatabase.transaction()) {
+        qWarning() << "removeUnusedFiles transaction start failed:" << mDatabase.lastError().text();
+        return -1;
+    }
+
+    QSqlQuery deleteQuery(mDatabase);
+    deleteQuery.prepare("DELETE FROM files WHERE id = ?");
+
+    int removedCount = 0;
+    for (const auto& unusedFile : unusedFiles) {
+        const QString absPath = absolutePath(unusedFile.second);
+        if (QFile::exists(absPath) && !QFile::remove(absPath)) {
+            qWarning() << "removeUnusedFiles failed to delete file:" << absPath;
+            mDatabase.rollback();
+            return -1;
+        }
+
+        deleteQuery.bindValue(0, unusedFile.first);
+        if (!deleteQuery.exec()) {
+            qWarning() << "removeUnusedFiles delete failed:" << deleteQuery.lastError().text();
+            mDatabase.rollback();
+            return -1;
+        }
+        ++removedCount;
+    }
+
+    if (!mDatabase.commit()) {
+        qWarning() << "removeUnusedFiles commit failed:" << mDatabase.lastError().text();
+        return -1;
+    }
+
+    return removedCount;
+}
+
 int DatabaseManager::removeUnusedStorageLocations() {
     QSqlQuery q(mDatabase);
     const bool ok = q.exec(
@@ -210,14 +391,5 @@ int DatabaseManager::removeUnusedStorageLocations() {
 }
 
 bool DatabaseManager::resetDatabase() {
-    closeDatabase();
-
-    // Delete the physical file so the next open starts from scratch
-    if (QFile::exists(mDbPath) && !QFile::remove(mDbPath)) {
-        qCritical() << "resetDatabase: could not delete" << mDbPath;
-        return false;
-    }
-
-    qDebug() << "Database file removed, re-opening...";
-    return openDatabase();
+    return openDatabase(true);
 }

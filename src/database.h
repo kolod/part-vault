@@ -17,6 +17,7 @@
 #pragma once
 
 #include <QtSql>
+#include <QDir>
 
 class DatabaseManager
 {
@@ -24,11 +25,11 @@ public:
     DatabaseManager(const QString& dbPath);
     ~DatabaseManager();
 
-    bool openDatabase();
+    bool openDatabase(bool reset = false);
     void closeDatabase();
     QSqlDatabase& database();
 
-    bool resetDatabase();   // drops and recreates the schema
+    bool resetDatabase();   // convenience: openDatabase(true)
     bool addDummyData();    // populates sample data
 
     // Returns the new row id on success, or -1 on failure.
@@ -41,12 +42,21 @@ public:
 
     // Returns number of rows deleted, or -1 on error.
     int  removeUnusedCategories();
+    int  removeUnusedFiles();
     int  removeUnusedStorageLocations();
+
+    // Gets the directory where the database file is located.
+    QString databaseDirectory() const { return mDbDir; }
+
+    // Gets the full path to the database file.
+    QString absolutePath(const QString& relativePath) const { return QDir(mDbDir).filePath(relativePath); }
 
 private:
     QSqlDatabase mDatabase;
     QString mDbPath;
+    QString mDbDir;
 
+    bool ensureStorageDirectories();
     bool executeScript(const QString& path);
     bool initializeDatabase();
 };
