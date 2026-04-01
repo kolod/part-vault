@@ -16,6 +16,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "models/filesmodel.h"
 #include "models/categorytreemodel.h"
 #include "models/storagetreemodel.h"
 #include "models/partsmodel.h"
@@ -39,6 +40,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Create models
     mPartsModel = new PartsModel(conn, this);
+    mFilesModel = new FilesModel(conn, this);
     mCategoryModel = new CategoryTreeModel(conn, this);
     mStorageModel  = new StorageTreeModel(conn, this);
 
@@ -63,6 +65,10 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableView->verticalHeader()->setVisible(false);
+
+    // Files list view
+    ui->viewFiles->setModel(mFilesModel);
+    ui->viewFiles->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     // Menu actions
 
@@ -211,6 +217,16 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         ui->actionStorageLocations->setChecked(visible);
     });
 
+    // View Show/Hide Files Dock action
+    connect(ui->actionFiles, &QAction::triggered, this, [this](bool checked) {
+        ui->dockFiles->setVisible(checked);
+    });
+
+    // Keep the "Show Files" menu action in sync with the actual visibility of the dock widget
+    connect(ui->dockFiles, &QDockWidget::visibilityChanged, this, [this](bool visible) {
+        ui->actionFiles->setChecked(visible);
+    });
+
     // Context menu for category tree
     ui->viewCategories->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->viewCategories, &QTreeView::customContextMenuRequested, this, [this](const QPoint& pos) {
@@ -255,6 +271,12 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         const int locId = mStorageModel->locationId(current);
         mPartsModel->setStorageLocation(locId);
         mCategoryModel->setLocationFilter(locId);
+    });
+
+    // Show files for the selected part
+    connect(ui->tableView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
+        const int partId = current.isValid() ? mPartsModel->partId(current.row()) : -1;
+        mFilesModel->setPart(partId);
     });
 }
 

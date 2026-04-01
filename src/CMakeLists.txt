@@ -11,6 +11,8 @@ qt_add_executable(PartVault
     models/reloadabletreemodel.h
     models/storagetreemodel.cpp
     models/storagetreemodel.h
+    models/filesmodel.cpp
+    models/filesmodel.h
     models/partsmodel.cpp
     models/partsmodel.h
     views/expandabletreeview.cpp

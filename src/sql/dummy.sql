@@ -181,20 +181,76 @@ INSERT OR IGNORE INTO parts (id, name, quantity, storage_location_id, category_i
 -- Sample files (paths are illustrative; no real files required)
 -- -----------------------------------------------------------------------------
 INSERT OR IGNORE INTO files (id, path, type, description) VALUES
-    (1, 'datasheets/ds18b20.pdf',      'datasheet', 'DS18B20 datasheet'),
-    (2, 'datasheets/stm32f103c8.pdf',  'datasheet', 'STM32F103C8 reference manual'),
-    (3, 'datasheets/mpu6050.pdf',      'datasheet', 'MPU-6050 product spec'),
-    (4, 'datasheets/lm2596.pdf',       'datasheet', 'LM2596 datasheet'),
-    (5, 'models/stm32f103c8t6.step',   'model',     'STM32F103C8T6 STEP model'),
-    (6, 'models/mpu6050.step',         'model',     'MPU-6050 STEP model');
+    -- Datasheets
+    ( 1, 'datasheets/ds18b20.pdf',           'datasheet', 'DS18B20 datasheet'),
+    ( 2, 'datasheets/stm32f103c8.pdf',        'datasheet', 'STM32F103C8 reference manual'),
+    ( 3, 'datasheets/mpu6050.pdf',            'datasheet', 'MPU-6050 product spec'),
+    ( 4, 'datasheets/lm2596.pdf',             'datasheet', 'LM2596 datasheet'),
+    ( 5, 'datasheets/rp2040.pdf',             'datasheet', 'RP2040 datasheet'),
+    ( 6, 'datasheets/esp32.pdf',              'datasheet', 'ESP32 datasheet'),
+    ( 7, 'datasheets/atmega328p.pdf',         'datasheet', 'ATmega328P datasheet'),
+    ( 8, 'datasheets/ams1117.pdf',            'datasheet', 'AMS1117 datasheet'),
+    ( 9, 'datasheets/mp2307.pdf',             'datasheet', 'MP2307 datasheet'),
+    (10, 'datasheets/tps54331.pdf',           'datasheet', 'TPS54331 datasheet'),
+    (11, 'datasheets/irlz44n.pdf',            'datasheet', 'IRLZ44N datasheet'),
+    (12, 'datasheets/ne555.pdf',              'datasheet', 'NE555 datasheet'),
+    (13, 'datasheets/pc817.pdf',              'datasheet', 'PC817 datasheet'),
+    (14, 'datasheets/lis3dh.pdf',             'datasheet', 'LIS3DH datasheet'),
+    -- STEP models
+    (15, 'models/stm32f103c8t6.step',         'model',     'STM32F103C8T6 STEP model'),
+    (16, 'models/mpu6050.step',               'model',     'MPU-6050 STEP model'),
+    (17, 'models/rp2040.step',                'model',     'RP2040 STEP model'),
+    (18, 'models/esp32-d0wdq6.step',          'model',     'ESP32-D0WDQ6 STEP model'),
+    (19, 'models/irlz44n_to220.step',         'model',     'IRLZ44N TO-220 STEP model'),
+    (20, 'models/usb_c_16pin.step',           'model',     'USB-C 16-pin SMD STEP model'),
+    -- CAD files
+    (21, 'cad/breakout_stm32f103.kicad_sch',  'cad',       'STM32F103 minimal breakout schematic'),
+    (22, 'cad/power_supply_lm2596.kicad_sch', 'cad',       'LM2596 buck converter schematic'),
+    (23, 'cad/sensor_ds18b20.kicad_sch',      'cad',       'DS18B20 sensor circuit schematic'),
+    (24, 'cad/imu_mpu6050.kicad_sch',         'cad',       'MPU-6050 IMU breakout schematic');
 
 -- -----------------------------------------------------------------------------
 -- File associations
 -- -----------------------------------------------------------------------------
 INSERT OR IGNORE INTO part_files (part_id, file_id) VALUES
-    (85, 1),   -- DS18B20                → ds18b20.pdf
-    (54, 2),   -- STM32F103C8T6          → stm32f103c8.pdf
-    (54, 5),   -- STM32F103C8T6          → .step model
-    (88, 3),   -- MPU-6050               → mpu6050.pdf
-    (88, 6),   -- MPU-6050               → .step model
-    (52, 4);   -- LM2596-5               → lm2596.pdf
+    -- DS18B20 (85)
+    (85,  1),   -- datasheet
+    (85, 23),   -- CAD schematic
+    -- STM32F103C8T6 (54)
+    (54,  2),   -- datasheet
+    (54, 15),   -- STEP model
+    (54, 21),   -- CAD schematic
+    -- MPU-6050 (88)
+    (88,  3),   -- datasheet
+    (88, 16),   -- STEP model
+    (88, 24),   -- CAD schematic
+    -- LM2596-5 (52)
+    (52,  4),   -- datasheet
+    (52, 22),   -- CAD schematic
+    -- RP2040 (55)
+    (55,  5),   -- datasheet
+    (55, 17),   -- STEP model
+    -- ESP32 (56)
+    (56,  6),   -- datasheet
+    (56, 18),   -- STEP model
+    -- ATmega328P (53)
+    (53,  7),   -- datasheet
+    -- AMS1117-3.3 (46)
+    (46,  8),   -- datasheet
+    -- AMS1117-5.0 (47)
+    (47,  8),   -- shared AMS1117 datasheet
+    -- MP2307 (50)
+    (50,  9),   -- datasheet
+    -- TPS54331 (51)
+    (51, 10),   -- datasheet
+    -- IRLZ44N (41)
+    (41, 11),   -- datasheet
+    (41, 19),   -- STEP model
+    -- NE555P (61)
+    (61, 12),   -- datasheet
+    -- PC817 (83)
+    (83, 13),   -- datasheet
+    -- LIS3DH (89)
+    (89, 14),   -- datasheet
+    -- USB-C 16-pin (68)
+    (68, 20);   -- USB-C 16-pin STEP model

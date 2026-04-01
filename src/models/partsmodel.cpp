@@ -30,39 +30,34 @@ PartsModel::PartsModel(const QString& connectionName, QObject* parent)
     fetchParts();
 }
 
-void PartsModel::setCategory(int categoryId)
-{
+void PartsModel::setCategory(int categoryId) {
     if (mCategoryFilter == categoryId) return;
     qDebug() << "PartsModel: category filter changed" << mCategoryFilter << "->" << categoryId;
     mCategoryFilter = categoryId;
     reload();
 }
 
-void PartsModel::setStorageLocation(int locationId)
-{
+void PartsModel::setStorageLocation(int locationId) {
     if (mStorageFilter == locationId) return;
     qDebug() << "PartsModel: storage filter changed" << mStorageFilter << "->" << locationId;
     mStorageFilter = locationId;
     reload();
 }
 
-void PartsModel::reload()
-{
+void PartsModel::reload() {
     beginResetModel();
     fetchParts();
     endResetModel();
 }
 
-int PartsModel::partId(int row) const
-{
+int PartsModel::partId(int row) const {
     if (row < 0 || row >= mParts.size()) return -1;
     return mParts.at(row).id;
 }
 
 // ── data loading ─────────────────────────────────────────────────────────────
 
-QList<int> PartsModel::categoryDescendants(int rootId) const
-{
+QList<int> PartsModel::categoryDescendants(int rootId) const {
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
     QList<int> result;
     QList<int> queue = {rootId};
@@ -85,8 +80,7 @@ QList<int> PartsModel::categoryDescendants(int rootId) const
     return result;
 }
 
-QList<int> PartsModel::storageDescendants(int rootId) const
-{
+QList<int> PartsModel::storageDescendants(int rootId) const {
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
     QList<int> result;
     QList<int> queue = {rootId};
@@ -109,8 +103,7 @@ QList<int> PartsModel::storageDescendants(int rootId) const
     return result;
 }
 
-void PartsModel::fetchParts()
-{
+void PartsModel::fetchParts() {
     mParts.clear();
 
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
@@ -192,64 +185,63 @@ void PartsModel::fetchParts()
 
 // ── QAbstractTableModel ───────────────────────────────────────────────────────
 
-int PartsModel::rowCount(const QModelIndex& parent) const
-{
+int PartsModel::rowCount(const QModelIndex& parent) const {
     if (parent.isValid()) return 0;
     return mParts.size();
 }
 
-int PartsModel::columnCount(const QModelIndex& parent) const
-{
+int PartsModel::columnCount(const QModelIndex& parent) const {
     if (parent.isValid()) return 0;
     return ColCount;
 }
 
-QVariant PartsModel::data(const QModelIndex& index, int role) const
-{
+QVariant PartsModel::data(const QModelIndex& index, int role) const {
+    // Validate the index and return an empty QVariant if it's out of range.
     if (!index.isValid() || index.row() >= mParts.size())
         return {};
 
+    // Get the part record for the given row.
     const PartRecord& p = mParts.at(index.row());
 
-    if (role == IdRole)
-        return p.id;
+    // For the custom IdRole, return the part id regardless of the column.
+    if (role == IdRole) return p.id;
 
-    if (role == Qt::DisplayRole || role == Qt::EditRole) {
-        switch (index.column()) {
+    // For display and editing, return the appropriate field based on the column.
+    if (role == Qt::DisplayRole || role == Qt::EditRole) switch (index.column()) {
         case ColName:       return p.name;
         case ColQuantity:   return p.quantity;
         case ColCategory:   return p.categoryName;
         case ColLocation:   return p.locationName;
         case ColLastChange: return p.lastChange;
-        }
     }
 
+    // Align the quantity column to the right for better readability.
     if (role == Qt::TextAlignmentRole && index.column() == ColQuantity)
         return QVariant(Qt::AlignRight | Qt::AlignVCenter);
 
+    // If the quantity is zero, show the text in a disabled color to indicate that the part is out of stock.
     if (role == Qt::ForegroundRole && p.quantity == 0)
         return QApplication::palette().color(QPalette::Disabled, QPalette::Text);
 
     return {};
 }
 
-QVariant PartsModel::headerData(int section, Qt::Orientation orientation, int role) const
-{
-    if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
-        return {};
-
-    switch (section) {
-    case ColName:       return tr("Name");
-    case ColQuantity:   return tr("Qty");
-    case ColCategory:   return tr("Category");
-    case ColLocation:   return tr("Location");
-    case ColLastChange: return tr("Last Change");
+QVariant PartsModel::headerData(int section, Qt::Orientation orientation, int role) const {
+    // Horizontal headers show column names.
+    if (orientation == Qt::Horizontal && role == Qt::DisplayRole) switch (section) {
+        case ColName:       return tr("Name");
+        case ColQuantity:   return tr("Qty");
+        case ColCategory:   return tr("Category");
+        case ColLocation:   return tr("Location");
+        case ColLastChange: return tr("Last Change");
     }
+
+    // For vertical headers, we could return row numbers, 
+    // but it's not very useful and just adds clutter.
     return {};
 }
 
-Qt::ItemFlags PartsModel::flags(const QModelIndex& index) const
-{
+Qt::ItemFlags PartsModel::flags(const QModelIndex& index) const {
     if (!index.isValid()) return Qt::NoItemFlags;
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }

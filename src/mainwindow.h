@@ -25,6 +25,7 @@
 #include <QMessageBox>
 
 #include "database.h"
+#include "models/filesmodel.h"
 #include "models/partsmodel.h"
 #include "models/categorytreemodel.h"
 #include "models/storagetreemodel.h"
@@ -85,6 +86,7 @@ private:
 
     Ui::MainWindow    *ui;
     DatabaseManager   &mDatabaseManager;
+    FilesModel        *mFilesModel    = nullptr;
     PartsModel        *mPartsModel    = nullptr;
     CategoryTreeModel *mCategoryModel = nullptr;
     StorageTreeModel  *mStorageModel  = nullptr;
