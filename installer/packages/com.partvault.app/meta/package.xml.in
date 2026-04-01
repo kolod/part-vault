@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package>
+    <DisplayName>PartVault</DisplayName>
+    <Description>Simple inventory manager for electronic components.</Description>
+    <Version>@PARTVAULT_IFW_VERSION@</Version>
+    <ReleaseDate>@PARTVAULT_IFW_RELEASE_DATE@</ReleaseDate>
+    <Default>true</Default>
+    <Essential>true</Essential>
+    <Licenses>
+        <License name="GPL-3.0-or-later" file="LICENSE"/>
+    </Licenses>
+</Package>

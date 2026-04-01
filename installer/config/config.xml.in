@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Installer>
+    <Name>PartVault</Name>
+    <Version>@PARTVAULT_IFW_VERSION@</Version>
+    <Title>PartVault Setup</Title>
+    <Publisher>@PARTVAULT_IFW_PUBLISHER@</Publisher>
+    <ProductUrl>@PARTVAULT_IFW_PRODUCT_URL@</ProductUrl>
+    <StartMenuDir>PartVault</StartMenuDir>
+    <TargetDir>@PARTVAULT_IFW_TARGET_DIR@</TargetDir>
+    <RunProgram>@TargetDir@/@PARTVAULT_IFW_APP_EXECUTABLE@</RunProgram>
+    <RunProgramDescription>Launch PartVault</RunProgramDescription>
+</Installer>
