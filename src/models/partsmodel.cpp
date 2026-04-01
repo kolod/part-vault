@@ -126,10 +126,16 @@ void PartsModel::fetchParts()
     // sl.name — resolved via LEFT JOIN so parts with no storage location return an empty string.
     // A WHERE clause is appended below when a category filter is active.
     QString sql =
-        "SELECT p.id, p.name, p.quantity, COALESCE(c.name, ''), COALESCE(s.name, ''), p.last_change "
+        "WITH RECURSIVE loc_path(id, path) AS ("
+        "  SELECT id, name FROM storage_locations WHERE parent_id = 0"
+        "  UNION ALL"
+        "  SELECT s.id, lp.path || ' > ' || s.name"
+        "  FROM storage_locations AS s JOIN loc_path AS lp ON s.parent_id = lp.id"
+        ") "
+        "SELECT p.id, p.name, p.quantity, COALESCE(c.name, ''), COALESCE(lp.path, ''), p.last_change "
         "FROM parts AS p "
-        "LEFT JOIN categories        AS c ON c.id = p.category_id "
-        "LEFT JOIN storage_locations AS s ON s.id = p.storage_location_id";
+        "LEFT JOIN categories AS c  ON c.id  = p.category_id "
+        "LEFT JOIN loc_path   AS lp ON lp.id = p.storage_location_id";
 
     QSqlQuery query(db);
     query.setForwardOnly(true);
