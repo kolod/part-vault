@@ -1,13 +1,6 @@
 //    PartVault - simple inventory manager for electronic components
 //    Copyright (C) 2026-...  Oleksandr Kolodkin <oleksandr.kolodkin@ukr.net>
 
-#include "stdint.h"
-
-#include <mz.h>
-#include <mz_strm.h>
-#include <mz_zip.h>
-#include <mz_zip_rw.h>
-
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -20,8 +13,9 @@
 #include <QTest>
 
 #include "../src/database.h"
+#include "../src/utils.h"
 
-class TstDatabaseArchive : public QObject
+class TstDatabase : public QObject
 {
     Q_OBJECT
 
@@ -38,37 +32,6 @@ private:
             return false;
         }
         return file.write(data) == data.size();
-    }
-
-    static bool extractArchive(const QString& archivePath, const QString& destinationDir, QString* errorMessage)
-    {
-        void* reader = mz_zip_reader_create();
-        if (!reader) {
-            if (errorMessage) *errorMessage = QStringLiteral("Failed to allocate zip reader");
-            return false;
-        }
-
-        const QByteArray archiveBytes = archivePath.toUtf8();
-        const QByteArray destBytes    = destinationDir.toUtf8();
-
-        int32_t err = mz_zip_reader_open_file(reader, archiveBytes.constData());
-        if (err != MZ_OK) {
-            if (errorMessage) *errorMessage = QStringLiteral("Failed to open archive (mz error %1)").arg(err);
-            mz_zip_reader_delete(&reader);
-            return false;
-        }
-
-        err = mz_zip_reader_save_all(reader, destBytes.constData());
-        if (err != MZ_OK && err != MZ_END_OF_LIST) {
-            if (errorMessage) *errorMessage = QStringLiteral("Failed to extract archive (mz error %1)").arg(err);
-            mz_zip_reader_close(reader);
-            mz_zip_reader_delete(&reader);
-            return false;
-        }
-
-        mz_zip_reader_close(reader);
-        mz_zip_reader_delete(&reader);
-        return true;
     }
 
 private slots:
@@ -120,7 +83,7 @@ private slots:
 
         QTemporaryDir extracted;
         QVERIFY(extracted.isValid());
-        QVERIFY2(extractArchive(archivePath, extracted.path(), &errorMessage), qPrintable(errorMessage));
+        QVERIFY2(extractZipArchive(archivePath, extracted.path(), &errorMessage), qPrintable(errorMessage));
 
         const QString jsonPath = QDir(extracted.path()).filePath(QStringLiteral("partvault.json"));
         QVERIFY2(QFileInfo::exists(jsonPath), "partvault.json was not found in archive");
@@ -178,8 +141,41 @@ private slots:
         QVERIFY(verifyLinks.next());
         QCOMPARE(verifyLinks.value(0).toString(), QStringLiteral("datasheets/r1.pdf"));
         QVERIFY(!verifyLinks.next());
+
+        // Physical datasheet file must have been restored to the new DB directory
+        QVERIFY2(QFileInfo::exists(db.absolutePath(QStringLiteral("datasheets/r1.pdf"))),
+                 "Datasheet file was not restored by importArchive");
+    }
+
+    // exportArchive fails gracefully when the archive path is empty
+    void exportArchiveEmptyPath()
+    {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        DatabaseManager db(QDir(tempDir.path()).filePath(QStringLiteral("parts.db")));
+        QVERIFY(db.openDatabase(true));
+
+        QString err;
+        QVERIFY(!db.exportArchive(QString(), &err));
+        QVERIFY(!err.isEmpty());
+    }
+
+    // importArchive fails gracefully when the archive file does not exist
+    void importArchiveNotFound()
+    {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        DatabaseManager db(QDir(tempDir.path()).filePath(QStringLiteral("parts.db")));
+        QVERIFY(db.openDatabase(true));
+
+        QString err;
+        QVERIFY(!db.importArchive(
+            QDir(tempDir.path()).filePath(QStringLiteral("noexist.zip")), &err));
+        QVERIFY(!err.isEmpty());
     }
 };
 
-QTEST_MAIN(TstDatabaseArchive)
-#include "tst_databasearchive.moc"
+QTEST_MAIN(TstDatabase)
+#include "test_database.moc"

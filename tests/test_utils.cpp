@@ -15,9 +15,12 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <QTest>
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include "../src/utils.h"
 
-class TstStripSqlComments : public QObject
+class TstUtils : public QObject
 {
     Q_OBJECT
 
@@ -104,7 +107,84 @@ private slots:
         const QString result = stripSqlComments(input);
         QCOMPARE(result, QString("SELECT 1-1;\n"));
     }
+
+    // createZipArchive produces a readable archive
+    void zipRoundTrip() {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        // Create a source directory with two files
+        const QString srcDir  = QDir(tempDir.path()).filePath(QStringLiteral("src"));
+        const QString destDir = QDir(tempDir.path()).filePath(QStringLiteral("out"));
+        const QString archive = QDir(tempDir.path()).filePath(QStringLiteral("test.zip"));
+        QVERIFY(QDir().mkpath(srcDir));
+
+        auto writeFile = [](const QString& path, const QByteArray& data) {
+            QFile f(path);
+            return f.open(QIODevice::WriteOnly) && f.write(data) == data.size();
+        };
+        QVERIFY(writeFile(QDir(srcDir).filePath(QStringLiteral("hello.txt")), QByteArrayLiteral("hello")));
+        QVERIFY(writeFile(QDir(srcDir).filePath(QStringLiteral("world.txt")), QByteArrayLiteral("world")));
+
+        QString err;
+        QVERIFY2(createZipArchive(archive, srcDir, &err), qPrintable(err));
+        QVERIFY(QFile::exists(archive));
+
+        QVERIFY2(extractZipArchive(archive, destDir, &err), qPrintable(err));
+
+        // Files must be present with correct content after extraction
+        auto readFile = [](const QString& path) -> QByteArray {
+            QFile f(path);
+            if (!f.open(QIODevice::ReadOnly)) return {};
+            return f.readAll();
+        };
+        QCOMPARE(readFile(QDir(destDir).filePath(QStringLiteral("hello.txt"))), QByteArrayLiteral("hello"));
+        QCOMPARE(readFile(QDir(destDir).filePath(QStringLiteral("world.txt"))), QByteArrayLiteral("world"));
+    }
+
+    // createZipArchive overwrites an existing archive
+    void zipOverwritesExisting() {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        const QString srcDir  = QDir(tempDir.path()).filePath(QStringLiteral("src"));
+        const QString archive = QDir(tempDir.path()).filePath(QStringLiteral("test.zip"));
+        QVERIFY(QDir().mkpath(srcDir));
+
+        QFile stub(archive);
+        QVERIFY(stub.open(QIODevice::WriteOnly));
+        stub.write(QByteArrayLiteral("stale"));
+        stub.close();
+
+        QFile f(QDir(srcDir).filePath(QStringLiteral("a.txt")));
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(QByteArrayLiteral("a"));
+        f.close();
+
+        QString err;
+        QVERIFY2(createZipArchive(archive, srcDir, &err), qPrintable(err));
+
+        // Archive must be a valid ZIP now, not the stale stub
+        const QString destDir = QDir(tempDir.path()).filePath(QStringLiteral("out"));
+        QVERIFY2(extractZipArchive(archive, destDir, &err), qPrintable(err));
+        QVERIFY(QFile::exists(QDir(destDir).filePath(QStringLiteral("a.txt"))));
+    }
+
+    // extractZipArchive fails gracefully on a non-existent archive
+    void unzipMissingFile() {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        QString err;
+        const bool ok = extractZipArchive(
+            QDir(tempDir.path()).filePath(QStringLiteral("nonexistent.zip")),
+            tempDir.path(),
+            &err
+        );
+        QVERIFY(!ok);
+        QVERIFY(!err.isEmpty());
+    }
 };
 
-QTEST_MAIN(TstStripSqlComments)
-#include "tst_stripsqlcomments.moc"
+QTEST_MAIN(TstUtils)
+#include "test_utils.moc"

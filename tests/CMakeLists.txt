@@ -1,26 +1,26 @@
-qt_add_executable(tst_stripsqlcomments
-    tst_stripsqlcomments.cpp
+qt_add_executable(test_utils
+    test_utils.cpp
     ../src/utils.cpp
     ../src/utils.h
 )
 
-target_link_libraries(tst_stripsqlcomments PRIVATE Qt::Core Qt::Test)
+target_link_libraries(test_utils PRIVATE Qt::Core Qt::Test MINIZIP::minizip)
 
-add_test(NAME tst_stripsqlcomments COMMAND tst_stripsqlcomments)
+add_test(NAME test_utils COMMAND test_utils)
 
-qt_add_executable(tst_databasearchive
-    tst_databasearchive.cpp
+qt_add_executable(test_database
+    test_database.cpp
     ../src/database.cpp
     ../src/database.h
     ../src/utils.cpp
     ../src/utils.h
 )
 
-qt_add_resources(tst_databasearchive "sql"
+qt_add_resources(test_database "sql"
     FILES
         ../src/sql/init.sql
 )
 
-target_link_libraries(tst_databasearchive PRIVATE Qt::Core Qt::Sql Qt::Test MINIZIP::minizip)
+target_link_libraries(test_database PRIVATE Qt::Core Qt::Sql Qt::Test MINIZIP::minizip)
 
-add_test(NAME tst_databasearchive COMMAND tst_databasearchive)
+add_test(NAME test_database COMMAND test_database)

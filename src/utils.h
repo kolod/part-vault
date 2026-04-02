@@ -23,3 +23,9 @@
 // respecting single-quoted string literals so that '--' inside
 // a string value is preserved.  Returns the cleaned SQL text.
 QString stripSqlComments(const QString& sql);
+
+// Creates a ZIP archive at archivePath containing all files under sourceDirPath.
+bool createZipArchive(const QString& archivePath, const QString& sourceDirPath, QString* errorMessage);
+
+// Extracts the ZIP archive at archivePath into destinationDirPath.
+bool extractZipArchive(const QString& archivePath, const QString& destinationDirPath, QString* errorMessage);
