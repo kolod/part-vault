@@ -52,8 +52,8 @@ private slots:
         // Set up a fresh database with one part, one category hierarchy,
         // one storage location hierarchy, and one linked datasheet file
         const QString dbPath = QDir(tempDir.path()).filePath(QStringLiteral("parts.db"));
-        DatabaseManager db(dbPath);
-        QVERIFY2(db.openDatabase(true, QStringLiteral(TEST_INIT_SQL_PATH)), "Failed to open test database");
+        DatabaseManager db(dbPath, QStringLiteral(TEST_INIT_SQL_PATH));
+        QVERIFY2(db.openDatabase(true), "Failed to open test database");
 
         const int passiveId = db.addCategory(QStringLiteral("Passive"), 0);
         QVERIFY(passiveId > 0);
@@ -164,8 +164,8 @@ private slots:
         QTemporaryDir tempDir;
         QVERIFY(tempDir.isValid());
 
-        DatabaseManager db(QDir(tempDir.path()).filePath(QStringLiteral("parts.db")));
-        QVERIFY(db.openDatabase(true, QStringLiteral(TEST_INIT_SQL_PATH)));
+        DatabaseManager db(QDir(tempDir.path()).filePath(QStringLiteral("parts.db")), QStringLiteral(TEST_INIT_SQL_PATH));
+        QVERIFY(db.openDatabase(true));
 
         QString err;
         QVERIFY(!db.exportArchive(QString(), &err));
@@ -177,8 +177,8 @@ private slots:
         QTemporaryDir tempDir;
         QVERIFY(tempDir.isValid());
 
-        DatabaseManager db(QDir(tempDir.path()).filePath(QStringLiteral("parts.db")));
-        QVERIFY(db.openDatabase(true, QStringLiteral(TEST_INIT_SQL_PATH)));
+        DatabaseManager db(QDir(tempDir.path()).filePath(QStringLiteral("parts.db")), QStringLiteral(TEST_INIT_SQL_PATH));
+        QVERIFY(db.openDatabase(true));
 
         QString err;
         QVERIFY(!db.importArchive(QDir(tempDir.path()).filePath(QStringLiteral("noexist.zip")), &err));

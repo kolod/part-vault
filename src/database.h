@@ -22,10 +22,10 @@
 class DatabaseManager
 {
 public:
-    DatabaseManager(const QString& dbPath);
+    DatabaseManager(const QString& dbPath, const QString& initSqlPath = QStringLiteral(":/sql/init.sql"));
     ~DatabaseManager();
 
-    bool openDatabase(bool reset = false, const QString& initSqlPath = QStringLiteral(":/sql/init.sql"));
+    bool openDatabase(bool reset = false);
     void closeDatabase();
     QSqlDatabase& database();
 
@@ -65,6 +65,6 @@ private:
     bool executeScript(const QString& path);
     bool initializeDatabase();
 
-    QString mInitSqlPath = QStringLiteral(":/sql/init.sql");
+    QString mInitSqlPath;
 };
 

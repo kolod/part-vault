@@ -447,8 +447,8 @@ bool createDummyFile(const QString& absPath, const QString& relativePath, const 
 
 } // namespace
 
-DatabaseManager::DatabaseManager(const QString& dbPath)
-    : mDbPath(dbPath), mDbDir(QFileInfo(dbPath).absolutePath())
+DatabaseManager::DatabaseManager(const QString& dbPath, const QString& initSqlPath)
+    : mDbPath(dbPath), mDbDir(QFileInfo(dbPath).absolutePath()), mInitSqlPath(initSqlPath)
 {
     mDatabase = QSqlDatabase::addDatabase("QSQLITE");
     mDatabase.setDatabaseName(mDbPath);
@@ -472,10 +472,7 @@ bool DatabaseManager::ensureStorageDirectories() {
     return true;
 }
 
-bool DatabaseManager::openDatabase(bool reset, const QString& initSqlPath) {
-    if (!initSqlPath.isEmpty())
-        mInitSqlPath = initSqlPath;
-
+bool DatabaseManager::openDatabase(bool reset) {
     if (reset) {
         closeDatabase();
         if (QFile::exists(mDbPath) && !QFile::remove(mDbPath)) {
