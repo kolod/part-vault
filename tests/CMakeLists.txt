@@ -16,10 +16,8 @@ qt_add_executable(test_database
     ../src/utils.h
 )
 
-qt_add_resources(test_database "sql"
-    BASE "${CMAKE_CURRENT_SOURCE_DIR}/../src"
-    FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/sql/init.sql
+target_compile_definitions(test_database PRIVATE
+    TEST_INIT_SQL_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../src/sql/init.sql"
 )
 
 target_link_libraries(test_database PRIVATE Qt::Core Qt::Sql Qt::Test MINIZIP::minizip)

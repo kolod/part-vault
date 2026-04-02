@@ -25,7 +25,7 @@ public:
     DatabaseManager(const QString& dbPath);
     ~DatabaseManager();
 
-    bool openDatabase(bool reset = false);
+    bool openDatabase(bool reset = false, const QString& initSqlPath = QStringLiteral(":/sql/init.sql"));
     void closeDatabase();
     QSqlDatabase& database();
 
@@ -64,5 +64,7 @@ private:
     bool ensureStorageDirectories();
     bool executeScript(const QString& path);
     bool initializeDatabase();
+
+    QString mInitSqlPath = QStringLiteral(":/sql/init.sql");
 };
 

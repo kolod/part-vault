@@ -469,7 +469,10 @@ bool DatabaseManager::ensureStorageDirectories() {
     return true;
 }
 
-bool DatabaseManager::openDatabase(bool reset) {
+bool DatabaseManager::openDatabase(bool reset, const QString& initSqlPath) {
+    if (!initSqlPath.isEmpty())
+        mInitSqlPath = initSqlPath;
+
     if (reset) {
         closeDatabase();
         if (QFile::exists(mDbPath) && !QFile::remove(mDbPath)) {
@@ -549,7 +552,7 @@ bool DatabaseManager::executeScript(const QString& path) {
 bool DatabaseManager::initializeDatabase() {
 
     // Initialize the database schema
-    if (!executeScript(":/sql/init.sql")) {
+    if (!executeScript(mInitSqlPath)) {
         qCritical() << "Database initialization failed";
         return false;
     }
