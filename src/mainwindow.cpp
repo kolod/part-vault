@@ -27,6 +27,7 @@
 #include <QMenu>
 #include <QDebug>
 #include <QDesktopServices>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QUrl>
 #include <functional>
@@ -146,6 +147,65 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     });
 
     // Menu actions
+
+    // Export action
+    connect(ui->actionExport, &QAction::triggered, this, [this]() {
+        const QString archivePath = QFileDialog::getSaveFileName(
+            this,
+            tr("Export Database"),
+            QDir::home().filePath(QStringLiteral("partvault-export.zip")),
+            tr("Zip Archive (*.zip)")
+        );
+        if (archivePath.isEmpty()) {
+            return;
+        }
+
+        QString errorMessage;
+        if (!mDatabaseManager.exportArchive(archivePath, &errorMessage)) {
+            QMessageBox::warning(this, tr("Export Failed"),
+                tr("Failed to export archive.\n%1").arg(errorMessage));
+            return;
+        }
+
+        QMessageBox::information(this, tr("Export Complete"),
+            tr("Archive was successfully exported to:\n%1").arg(archivePath));
+    });
+
+    // Import action
+    connect(ui->actionImport, &QAction::triggered, this, [this]() {
+        const QString archivePath = QFileDialog::getOpenFileName(
+            this,
+            tr("Import Database"),
+            QDir::homePath(),
+            tr("Zip Archive (*.zip)")
+        );
+        if (archivePath.isEmpty()) {
+            return;
+        }
+
+        if (QMessageBox::question(
+                this,
+                tr("Import Database"),
+                tr("Importing will replace the current database and all stored files. Continue?"))
+            != QMessageBox::Yes) {
+            return;
+        }
+
+        QString errorMessage;
+        if (!mDatabaseManager.importArchive(archivePath, &errorMessage)) {
+            QMessageBox::warning(this, tr("Import Failed"),
+                tr("Failed to import archive.\n%1").arg(errorMessage));
+            return;
+        }
+
+        ui->viewCategories->reloadPreservingExpanded();
+        ui->viewStorageLocations->reloadPreservingExpanded();
+        mPartsModel->reload();
+        mFilesModel->reload();
+
+        QMessageBox::information(this, tr("Import Complete"),
+            tr("Archive was successfully imported."));
+    });
 
     // Exit action
     connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);

@@ -32,6 +32,11 @@ public:
     bool resetDatabase();   // convenience: openDatabase(true)
     bool addDummyData();    // populates sample data
 
+    // Exports/imports the whole storage directory as a zip archive.
+    // On failure, returns false and optionally writes a human-readable error.
+    bool exportArchive(const QString& archivePath, QString* errorMessage = nullptr);
+    bool importArchive(const QString& archivePath, QString* errorMessage = nullptr);
+
     // Returns the new row id on success, or -1 on failure.
     int  addCategory       (const QString& name, int parentId);   // parentId = -1 → no parent
     int  addPart           (const QString& name, int quantity, int categoryId, int locationId);  // -1 → NULL FK
