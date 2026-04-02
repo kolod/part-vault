@@ -48,7 +48,8 @@ jobs:
             build_type: Release
 
     steps:
-    - uses: actions/checkout@v6
+    - name: Checkout code
+      uses: actions/checkout@v6
 
     - name: Install Qt
       # Install Qt using the jurplel/install-qt-action. 
@@ -93,12 +94,23 @@ jobs:
     runs-on: windows-latest
     needs: build
 
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture:
+          - amd64
+          - amd64_arm64
+
     steps:
-    - uses: actions/checkout@v6
+    - name: Checkout code
+      uses: actions/checkout@v6
 
-    # ── AMD64 ──────────────────────────────────────────────────────────────────
+    - name: Set up MSVC environment
+      uses: ilammy/msvc-dev-cmd@v1 
+      with:
+        arch: ${{ matrix.architecture }}
 
-    - name: Install Qt amd64 + IFW
+    - name: Install Qt + IFW
       uses: jurplel/install-qt-action@v4
       with:
         version: "6.10.0"
@@ -109,30 +121,39 @@ jobs:
         pw: ${{ secrets.QT_PW }}
         tools: "tools_ifw"
 
-    - name: Set up MSVC (amd64)
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: amd64
-
-    - name: Configure CMake (amd64)
+    - name: Configure CMake
       run: >
-        cmake -B ${{ github.workspace }}/build-amd64
+        cmake -B ${{ github.workspace }}/build-installer
         -DCMAKE_BUILD_TYPE=Release
         -DENABLE_TESTS=OFF
         -DENABLE_DUMMY_DATA=OFF
         -DENABLE_IFW_INSTALLER=ON
         -S ${{ github.workspace }}
 
-    - name: Build IFW installer (amd64)
-      run: cmake --build ${{ github.workspace }}/build-amd64 --config Release --target ifw_installer
+    - name: Build IFW installer
+      run: cmake --build ${{ github.workspace }}/build-installer --config Release --target ifw_installer
 
-    - name: Rename amd64 installer
-      shell: bash
-      run: mv "${{ github.workspace }}/build-amd64/PartVault-Installer-"*.exe "${{ github.workspace }}/build-amd64/PartVault-Installer-amd64.exe"
+    - name: Upload installer artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: partvault-windows-installer-${{ matrix.architecture }}
+        path: ${{ github.workspace }}/build-installer/PartVault-Installer-*.exe
+        if-no-files-found: error
 
-    # ── ARM64 ──────────────────────────────────────────────────────────────────
+  windows-arm64:
+    runs-on: windows-11-arm
+    needs: build
 
-    - name: Install Qt arm64
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Set up MSVC environment
+      uses: ilammy/msvc-dev-cmd@v1 
+      with:
+        arch: arm64
+
+    - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
         version: "6.10.0"
@@ -141,42 +162,27 @@ jobs:
         use-official: true
         email: ${{ secrets.QT_EMAIL }}
         pw: ${{ secrets.QT_PW }}
+        tools: "tools_ifw"
 
-    - name: Set up MSVC (amd64_arm64)
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: amd64_arm64
-
-    - name: Configure CMake (arm64)
+    - name: Configure CMake
       run: >
         cmake -B ${{ github.workspace }}/build-arm64
+        -DCMAKE_CXX_COMPILER=cl
+        -DCMAKE_C_COMPILER=cl
         -DCMAKE_BUILD_TYPE=Release
         -DENABLE_TESTS=OFF
         -DENABLE_DUMMY_DATA=OFF
         -DENABLE_IFW_INSTALLER=ON
         -S ${{ github.workspace }}
 
-    - name: Build IFW installer (arm64)
+    - name: Build IFW installer
       run: cmake --build ${{ github.workspace }}/build-arm64 --config Release --target ifw_installer
 
-    - name: Rename arm64 installer
-      shell: bash
-      run: mv "${{ github.workspace }}/build-arm64/PartVault-Installer-"*.exe "${{ github.workspace }}/build-arm64/PartVault-Installer-arm64.exe"
-
-    # ── Upload both ────────────────────────────────────────────────────────────
-
-    - name: Upload amd64 installer artifacts
+    - name: Upload installer artifact
       uses: actions/upload-artifact@v4
       with:
-        name: partvault-windows-installer-amd64
-        path: ${{ github.workspace }}/build-amd64/PartVault-Installer-amd64.exe
-        if-no-files-found: error
-
-    - name: Upload arm64 installer artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: partvault-windows-installer-arm64
-        path: ${{ github.workspace }}/build-arm64/PartVault-Installer-arm64.exe
+        name: partvault-windows-arm64-installer
+        path: ${{ github.workspace }}/build-arm64/PartVault-Installer-*.exe
         if-no-files-found: error
 
   deb-package:
@@ -184,7 +190,8 @@ jobs:
     needs: build
 
     steps:
-    - uses: actions/checkout@v6
+    - name: Checkout code
+      uses: actions/checkout@v6
 
     - name: Install packaging tools
       run: sudo apt-get install -y dpkg-dev
