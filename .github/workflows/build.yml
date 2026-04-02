@@ -150,7 +150,6 @@ jobs:
     - name: Configure CMake (arm64)
       run: >
         cmake -B ${{ github.workspace }}/build-arm64
-        -A ARM64
         -DCMAKE_BUILD_TYPE=Release
         -DENABLE_TESTS=OFF
         -DENABLE_DUMMY_DATA=OFF
