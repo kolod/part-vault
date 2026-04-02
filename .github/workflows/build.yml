@@ -91,9 +91,22 @@ jobs:
 
   windows-installer:
     runs-on: windows-latest
+    needs: build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture:
+          - amd64
+          - amd64_arm64
 
     steps:
     - uses: actions/checkout@v6
+
+    - name: Set up MSVC environment
+      uses: ilammy/msvc-dev-cmd@v1 
+      with:
+        arch: ${{ matrix.architecture }}
 
     - name: Install Qt + IFW
       uses: jurplel/install-qt-action@v4
@@ -111,6 +124,8 @@ jobs:
         cmake -B ${{ github.workspace }}/build-installer
         -DCMAKE_BUILD_TYPE=Release
         -DENABLE_TESTS=OFF
+        -DENABLE_DUMMY_DATA=OFF
+        -DENABLE_IFW_INSTALLER=ON
         -S ${{ github.workspace }}
 
     - name: Build IFW installer
@@ -119,6 +134,52 @@ jobs:
     - name: Upload installer artifact
       uses: actions/upload-artifact@v4
       with:
-        name: partvault-windows-installer
+        name: partvault-windows-installer-${{ matrix.architecture }}
         path: ${{ github.workspace }}/build-installer/PartVault-Installer-*.exe
+        if-no-files-found: error
+
+  deb-package:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Install packaging tools
+      run: sudo apt-get install -y dpkg-dev
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: "6.10.0"
+        target: "desktop"
+        arch: "linux_gcc_64"
+        use-official: true
+        email: ${{ secrets.QT_EMAIL }}
+        pw: ${{ secrets.QT_PW }}
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ github.workspace }}/build-deb
+        -DCMAKE_CXX_COMPILER=g++
+        -DCMAKE_C_COMPILER=gcc
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=/usr
+        -DENABLE_TESTS=OFF
+        -DENABLE_DUMMY_DATA=OFF
+        -DENABLE_IFW_INSTALLER=OFF
+        -S ${{ github.workspace }}
+
+    - name: Build
+      run: cmake --build ${{ github.workspace }}/build-deb --config Release
+
+    - name: Package
+      working-directory: ${{ github.workspace }}/build-deb
+      run: cpack -G DEB
+
+    - name: Upload .deb artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: partvault-deb-package
+        path: ${{ github.workspace }}/build-deb/*.deb
         if-no-files-found: error
