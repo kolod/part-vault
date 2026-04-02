@@ -17,6 +17,7 @@ qt_add_executable(test_database
 )
 
 qt_add_resources(test_database "sql"
+    BASE "../src"
     FILES
         ../src/sql/init.sql
 )
