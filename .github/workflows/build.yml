@@ -88,3 +88,37 @@ jobs:
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }}
+
+  windows-installer:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Install Qt + IFW
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: "6.10.0"
+        target: "desktop"
+        arch: "win64_msvc2022_64"
+        use-official: true
+        email: ${{ secrets.QT_EMAIL }}
+        pw: ${{ secrets.QT_PW }}
+        tools: "tools_ifw"
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ github.workspace }}/build-installer
+        -DCMAKE_BUILD_TYPE=Release
+        -DENABLE_TESTS=OFF
+        -S ${{ github.workspace }}
+
+    - name: Build IFW installer
+      run: cmake --build ${{ github.workspace }}/build-installer --config Release --target ifw_installer
+
+    - name: Upload installer artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: partvault-windows-installer
+        path: ${{ github.workspace }}/build-installer/PartVault-Installer-*.exe
+        if-no-files-found: error
