@@ -16,6 +16,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -42,6 +43,15 @@ private:
     }
 
 private slots:
+    void initTestCase() {
+        qDebug() << "TEST_INIT_SQL_PATH :" << QStringLiteral(TEST_INIT_SQL_PATH);
+        qDebug() << "File exists        :" << QFileInfo::exists(QStringLiteral(TEST_INIT_SQL_PATH));
+        qDebug() << "Qt resources in test binary:";
+        QDirIterator it(QStringLiteral(":/"), QDirIterator::Subdirectories);
+        while (it.hasNext())
+            qDebug() << "  " << it.next();
+    }
+
     // Full export → inspect archive → reset DB → import → verify DB and files
     void exportImportRoundTrip() {
         QCoreApplication::setApplicationVersion(QStringLiteral("1.0"));
@@ -123,6 +133,7 @@ private slots:
         QCOMPARE(p0.value(QStringLiteral("files")).toArray().at(0).toString(), QStringLiteral("datasheets/r1.pdf"));
 
         // Reset the DB (adds a stale part), then import and verify the restored data
+        qDebug() << "DB path before reset:" << db.databaseDirectory();
         QVERIFY(db.resetDatabase());
         QVERIFY(db.addPart(QStringLiteral("temp"), 1, -1, -1) > 0);
 
