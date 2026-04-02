@@ -20,8 +20,7 @@
 #include <QTemporaryDir>
 #include "../src/utils.h"
 
-class TstUtils : public QObject
-{
+class TstUtils : public QObject {
     Q_OBJECT
 
 private slots:

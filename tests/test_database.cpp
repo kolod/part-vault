@@ -1,5 +1,18 @@
-//    PartVault - simple inventory manager for electronic components
+//    PartVault — simple inventory manager for electronic components
 //    Copyright (C) 2026-...  Oleksandr Kolodkin <oleksandr.kolodkin@ukr.net>
+//
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <QCoreApplication>
 #include <QDir>
@@ -15,33 +28,29 @@
 #include "../src/database.h"
 #include "../src/utils.h"
 
-class TstDatabase : public QObject
-{
+class TstDatabase : public QObject {
     Q_OBJECT
 
 private:
-    static bool writeTextFile(const QString& absolutePath, const QByteArray& data)
-    {
+    static bool writeTextFile(const QString& absolutePath, const QByteArray& data) {
         const QFileInfo info(absolutePath);
-        if (!QDir().mkpath(info.absolutePath())) {
-            return false;
-        }
+        if (!QDir().mkpath(info.absolutePath())) return false;
 
         QFile file(absolutePath);
-        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            return false;
-        }
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
         return file.write(data) == data.size();
     }
 
 private slots:
-    void exportImportRoundTrip()
-    {
+    // Full export → inspect archive → reset DB → import → verify DB and files
+    void exportImportRoundTrip() {
         QCoreApplication::setApplicationVersion(QStringLiteral("1.0"));
 
         QTemporaryDir tempDir;
         QVERIFY2(tempDir.isValid(), "Failed to create temporary test directory");
 
+        // Set up a fresh database with one part, one category hierarchy,
+        // one storage location hierarchy, and one linked datasheet file
         const QString dbPath = QDir(tempDir.path()).filePath(QStringLiteral("parts.db"));
         DatabaseManager db(dbPath);
         QVERIFY2(db.openDatabase(true), "Failed to open test database");
@@ -76,11 +85,13 @@ private slots:
         linkFile.addBindValue(fileId);
         QVERIFY(linkFile.exec());
 
+        // Export and verify the archive was created
         const QString archivePath = QDir(tempDir.path()).filePath(QStringLiteral("backup.zip"));
         QString errorMessage;
         QVERIFY2(db.exportArchive(archivePath, &errorMessage), qPrintable(errorMessage));
         QVERIFY(QFileInfo::exists(archivePath));
 
+        // Inspect the manifest JSON inside the archive
         QTemporaryDir extracted;
         QVERIFY(extracted.isValid());
         QVERIFY2(extractZipArchive(archivePath, extracted.path(), &errorMessage), qPrintable(errorMessage));
@@ -111,20 +122,21 @@ private slots:
         QCOMPARE(p0.value(QStringLiteral("files")).toArray().size(), 1);
         QCOMPARE(p0.value(QStringLiteral("files")).toArray().at(0).toString(), QStringLiteral("datasheets/r1.pdf"));
 
+        // Reset the DB (adds a stale part), then import and verify the restored data
         QVERIFY(db.resetDatabase());
         QVERIFY(db.addPart(QStringLiteral("temp"), 1, -1, -1) > 0);
 
         QVERIFY2(db.importArchive(archivePath, &errorMessage), qPrintable(errorMessage));
 
         QSqlQuery verifyPart(db.database());
-        QVERIFY(verifyPart.exec(
-            QStringLiteral("SELECT p.name, p.quantity, c.name, pc.name, s.name, ps.name "
-                           "FROM parts p "
-                           "LEFT JOIN categories c ON c.id = p.category_id "
-                           "LEFT JOIN categories pc ON pc.id = c.parent_id "
-                           "LEFT JOIN storage_locations s ON s.id = p.storage_location_id "
-                           "LEFT JOIN storage_locations ps ON ps.id = s.parent_id")
-        ));
+        QVERIFY(verifyPart.exec(QStringLiteral(
+            "SELECT p.name, p.quantity, c.name, pc.name, s.name, ps.name "
+            "FROM parts p "
+            "LEFT JOIN categories c ON c.id = p.category_id "
+            "LEFT JOIN categories pc ON pc.id = c.parent_id "
+            "LEFT JOIN storage_locations s ON s.id = p.storage_location_id "
+            "LEFT JOIN storage_locations ps ON ps.id = s.parent_id"
+        )));
         QVERIFY(verifyPart.next());
         QCOMPARE(verifyPart.value(0).toString(), QStringLiteral("R1 10k"));
         QCOMPARE(verifyPart.value(1).toInt(), 123);
@@ -135,9 +147,9 @@ private slots:
         QVERIFY(!verifyPart.next());
 
         QSqlQuery verifyLinks(db.database());
-        QVERIFY(verifyLinks.exec(
-            QStringLiteral("SELECT f.path FROM files f JOIN part_files pf ON pf.file_id = f.id ORDER BY f.path")
-        ));
+        QVERIFY(verifyLinks.exec(QStringLiteral(
+            "SELECT f.path FROM files f JOIN part_files pf ON pf.file_id = f.id ORDER BY f.path"
+        )));
         QVERIFY(verifyLinks.next());
         QCOMPARE(verifyLinks.value(0).toString(), QStringLiteral("datasheets/r1.pdf"));
         QVERIFY(!verifyLinks.next());
@@ -148,8 +160,7 @@ private slots:
     }
 
     // exportArchive fails gracefully when the archive path is empty
-    void exportArchiveEmptyPath()
-    {
+    void exportArchiveEmptyPath() {
         QTemporaryDir tempDir;
         QVERIFY(tempDir.isValid());
 
@@ -162,8 +173,7 @@ private slots:
     }
 
     // importArchive fails gracefully when the archive file does not exist
-    void importArchiveNotFound()
-    {
+    void importArchiveNotFound() {
         QTemporaryDir tempDir;
         QVERIFY(tempDir.isValid());
 
@@ -171,8 +181,7 @@ private slots:
         QVERIFY(db.openDatabase(true));
 
         QString err;
-        QVERIFY(!db.importArchive(
-            QDir(tempDir.path()).filePath(QStringLiteral("noexist.zip")), &err));
+        QVERIFY(!db.importArchive(QDir(tempDir.path()).filePath(QStringLiteral("noexist.zip")), &err));
         QVERIFY(!err.isEmpty());
     }
 };
