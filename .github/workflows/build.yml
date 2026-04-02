@@ -93,22 +93,12 @@ jobs:
     runs-on: windows-latest
     needs: build
 
-    strategy:
-      fail-fast: false
-      matrix:
-        architecture:
-          - amd64
-          - amd64_arm64
-
     steps:
     - uses: actions/checkout@v6
 
-    - name: Set up MSVC environment
-      uses: ilammy/msvc-dev-cmd@v1 
-      with:
-        arch: ${{ matrix.architecture }}
+    # ── AMD64 ──────────────────────────────────────────────────────────────────
 
-    - name: Install Qt + IFW
+    - name: Install Qt amd64 + IFW
       uses: jurplel/install-qt-action@v4
       with:
         version: "6.10.0"
@@ -119,23 +109,75 @@ jobs:
         pw: ${{ secrets.QT_PW }}
         tools: "tools_ifw"
 
-    - name: Configure CMake
+    - name: Set up MSVC (amd64)
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: amd64
+
+    - name: Configure CMake (amd64)
       run: >
-        cmake -B ${{ github.workspace }}/build-installer
+        cmake -B ${{ github.workspace }}/build-amd64
         -DCMAKE_BUILD_TYPE=Release
         -DENABLE_TESTS=OFF
         -DENABLE_DUMMY_DATA=OFF
         -DENABLE_IFW_INSTALLER=ON
         -S ${{ github.workspace }}
 
-    - name: Build IFW installer
-      run: cmake --build ${{ github.workspace }}/build-installer --config Release --target ifw_installer
+    - name: Build IFW installer (amd64)
+      run: cmake --build ${{ github.workspace }}/build-amd64 --config Release --target ifw_installer
 
-    - name: Upload installer artifact
+    - name: Rename amd64 installer
+      shell: bash
+      run: mv "${{ github.workspace }}/build-amd64/PartVault-Installer-"*.exe "${{ github.workspace }}/build-amd64/PartVault-Installer-amd64.exe"
+
+    # ── ARM64 ──────────────────────────────────────────────────────────────────
+
+    - name: Install Qt arm64
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: "6.10.0"
+        target: "desktop"
+        arch: "win64_msvc2022_arm64"
+        use-official: true
+        email: ${{ secrets.QT_EMAIL }}
+        pw: ${{ secrets.QT_PW }}
+
+    - name: Set up MSVC (amd64_arm64)
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: amd64_arm64
+
+    - name: Configure CMake (arm64)
+      run: >
+        cmake -B ${{ github.workspace }}/build-arm64
+        -A ARM64
+        -DCMAKE_BUILD_TYPE=Release
+        -DENABLE_TESTS=OFF
+        -DENABLE_DUMMY_DATA=OFF
+        -DENABLE_IFW_INSTALLER=ON
+        -S ${{ github.workspace }}
+
+    - name: Build IFW installer (arm64)
+      run: cmake --build ${{ github.workspace }}/build-arm64 --config Release --target ifw_installer
+
+    - name: Rename arm64 installer
+      shell: bash
+      run: mv "${{ github.workspace }}/build-arm64/PartVault-Installer-"*.exe "${{ github.workspace }}/build-arm64/PartVault-Installer-arm64.exe"
+
+    # ── Upload both ────────────────────────────────────────────────────────────
+
+    - name: Upload amd64 installer artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: partvault-windows-installer-${{ matrix.architecture }}
-        path: ${{ github.workspace }}/build-installer/PartVault-Installer-*.exe
+        name: partvault-windows-installer-amd64
+        path: ${{ github.workspace }}/build-amd64/PartVault-Installer-amd64.exe
+        if-no-files-found: error
+
+    - name: Upload arm64 installer artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: partvault-windows-installer-arm64
+        path: ${{ github.workspace }}/build-arm64/PartVault-Installer-arm64.exe
         if-no-files-found: error
 
   deb-package:
