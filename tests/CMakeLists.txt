@@ -21,6 +21,6 @@ qt_add_resources(tst_databasearchive "sql"
         ../src/sql/init.sql
 )
 
-target_link_libraries(tst_databasearchive PRIVATE Qt::Core Qt::Sql Qt::Test)
+target_link_libraries(tst_databasearchive PRIVATE Qt::Core Qt::Sql Qt::Test MINIZIP::minizip)
 
 add_test(NAME tst_databasearchive COMMAND tst_databasearchive)

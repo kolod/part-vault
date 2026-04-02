@@ -1,6 +1,13 @@
 //    PartVault - simple inventory manager for electronic components
 //    Copyright (C) 2026-...  Oleksandr Kolodkin <oleksandr.kolodkin@ukr.net>
 
+#include "stdint.h"
+
+#include <mz.h>
+#include <mz_strm.h>
+#include <mz_zip.h>
+#include <mz_zip_rw.h>
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -8,7 +15,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QProcess>
 #include <QSqlQuery>
 #include <QTemporaryDir>
 #include <QTest>
@@ -36,23 +42,32 @@ private:
 
     static bool extractArchive(const QString& archivePath, const QString& destinationDir, QString* errorMessage)
     {
-        QProcess process;
-#ifdef Q_OS_WIN
-        const QString command =
-            QStringLiteral("Expand-Archive -Path \"%1\" -DestinationPath \"%2\" -Force")
-                .arg(QDir::toNativeSeparators(archivePath), QDir::toNativeSeparators(destinationDir));
-        process.start(QStringLiteral("powershell"),
-                      {QStringLiteral("-NoProfile"), QStringLiteral("-Command"), command});
-#else
-        process.start(QStringLiteral("unzip"),
-                      {QStringLiteral("-o"), archivePath, QStringLiteral("-d"), destinationDir});
-#endif
-        if (!process.waitForFinished(-1) || process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
-            if (errorMessage) {
-                *errorMessage = QString::fromLocal8Bit(process.readAllStandardError());
-            }
+        void* reader = mz_zip_reader_create();
+        if (!reader) {
+            if (errorMessage) *errorMessage = QStringLiteral("Failed to allocate zip reader");
             return false;
         }
+
+        const QByteArray archiveBytes = archivePath.toUtf8();
+        const QByteArray destBytes    = destinationDir.toUtf8();
+
+        int32_t err = mz_zip_reader_open_file(reader, archiveBytes.constData());
+        if (err != MZ_OK) {
+            if (errorMessage) *errorMessage = QStringLiteral("Failed to open archive (mz error %1)").arg(err);
+            mz_zip_reader_delete(&reader);
+            return false;
+        }
+
+        err = mz_zip_reader_save_all(reader, destBytes.constData());
+        if (err != MZ_OK && err != MZ_END_OF_LIST) {
+            if (errorMessage) *errorMessage = QStringLiteral("Failed to extract archive (mz error %1)").arg(err);
+            mz_zip_reader_close(reader);
+            mz_zip_reader_delete(&reader);
+            return false;
+        }
+
+        mz_zip_reader_close(reader);
+        mz_zip_reader_delete(&reader);
         return true;
     }
 

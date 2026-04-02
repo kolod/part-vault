@@ -48,6 +48,7 @@ target_link_libraries(PartVault
         Qt::Core
         Qt::Widgets
         Qt::Sql
+        MINIZIP::minizip
 )
 
 install(TARGETS PartVault

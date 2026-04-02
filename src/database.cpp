@@ -14,6 +14,13 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "stdint.h"
+
+#include <mz.h>
+#include <mz_strm.h>
+#include <mz_zip.h>
+#include <mz_zip_rw.h>
+
 #include "database.h"
 #include "utils.h"
 #include <QFile>
@@ -26,7 +33,6 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QProcess>
 #include <QSqlQuery>
 #include <QStringList>
 #include <QTemporaryDir>
@@ -88,48 +94,70 @@ bool copyDirectoryContents(const QString& sourceDirPath, const QString& targetDi
 bool runZipCommand(const QString& archivePath, const QString& sourceDirPath, QString* errorMessage) {
     QFile::remove(archivePath);
 
-    QProcess process;
-#ifdef Q_OS_WIN
-    const QString command =
-        QStringLiteral("Compress-Archive -Path \"%1\\*\" -DestinationPath \"%2\" -Force")
-            .arg(QDir::toNativeSeparators(sourceDirPath), QDir::toNativeSeparators(archivePath));
-    process.start(QStringLiteral("powershell"),
-                  {QStringLiteral("-NoProfile"), QStringLiteral("-Command"), command});
-#else
-    process.setWorkingDirectory(sourceDirPath);
-    process.start(QStringLiteral("zip"), {QStringLiteral("-r"), archivePath, QStringLiteral(".")});
-#endif
-
-    if (!process.waitForFinished(-1) || process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Failed to create zip archive: %1")
-                .arg(QString::fromLocal8Bit(process.readAllStandardError()));
-        }
+    void* writer = mz_zip_writer_create();
+    if (!writer) {
+        if (errorMessage) *errorMessage = QStringLiteral("Failed to allocate zip writer");
         return false;
     }
+
+    mz_zip_writer_set_compress_method(writer, MZ_COMPRESS_METHOD_DEFLATE);
+    mz_zip_writer_set_compress_level(writer, MZ_COMPRESS_LEVEL_DEFAULT);
+
+    const QByteArray archiveBytes   = archivePath.toUtf8();
+    const QByteArray sourceDirBytes = sourceDirPath.toUtf8();
+
+    int32_t err = mz_zip_writer_open_file(writer, archiveBytes.constData(), 0, 0);
+    if (err != MZ_OK) {
+        if (errorMessage) *errorMessage = QStringLiteral("Failed to create archive (mz error %1)").arg(err);
+        mz_zip_writer_delete(&writer);
+        return false;
+    }
+
+    err = mz_zip_writer_add_path(writer, sourceDirBytes.constData(), sourceDirBytes.constData(), 0, 1);
+    if (err != MZ_OK && err != MZ_END_OF_LIST) {
+        if (errorMessage) *errorMessage = QStringLiteral("Failed to add files to archive (mz error %1)").arg(err);
+        mz_zip_writer_close(writer);
+        mz_zip_writer_delete(&writer);
+        return false;
+    }
+
+    err = mz_zip_writer_close(writer);
+    mz_zip_writer_delete(&writer);
+    if (err != MZ_OK) {
+        if (errorMessage) *errorMessage = QStringLiteral("Failed to finalise archive (mz error %1)").arg(err);
+        return false;
+    }
+
     return true;
 }
 
 bool runUnzipCommand(const QString& archivePath, const QString& destinationDirPath, QString* errorMessage) {
-    QProcess process;
-#ifdef Q_OS_WIN
-    const QString command =
-        QStringLiteral("Expand-Archive -Path \"%1\" -DestinationPath \"%2\" -Force")
-            .arg(QDir::toNativeSeparators(archivePath), QDir::toNativeSeparators(destinationDirPath));
-    process.start(QStringLiteral("powershell"),
-                  {QStringLiteral("-NoProfile"), QStringLiteral("-Command"), command});
-#else
-    process.start(QStringLiteral("unzip"),
-                  {QStringLiteral("-o"), archivePath, QStringLiteral("-d"), destinationDirPath});
-#endif
-
-    if (!process.waitForFinished(-1) || process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("Failed to extract zip archive: %1")
-                .arg(QString::fromLocal8Bit(process.readAllStandardError()));
-        }
+    void* reader = mz_zip_reader_create();
+    if (!reader) {
+        if (errorMessage) *errorMessage = QStringLiteral("Failed to allocate zip reader");
         return false;
     }
+
+    const QByteArray archiveBytes = archivePath.toUtf8();
+    const QByteArray destDirBytes = destinationDirPath.toUtf8();
+
+    int32_t err = mz_zip_reader_open_file(reader, archiveBytes.constData());
+    if (err != MZ_OK) {
+        if (errorMessage) *errorMessage = QStringLiteral("Failed to open archive (mz error %1)").arg(err);
+        mz_zip_reader_delete(&reader);
+        return false;
+    }
+
+    err = mz_zip_reader_save_all(reader, destDirBytes.constData());
+    if (err != MZ_OK && err != MZ_END_OF_LIST) {
+        if (errorMessage) *errorMessage = QStringLiteral("Failed to extract archive (mz error %1)").arg(err);
+        mz_zip_reader_close(reader);
+        mz_zip_reader_delete(&reader);
+        return false;
+    }
+
+    mz_zip_reader_close(reader);
+    mz_zip_reader_delete(&reader);
     return true;
 }
 
