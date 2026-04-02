@@ -90,6 +90,14 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }}
 
+    - name: Upload test log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ctest-last-log-${{ matrix.variant }}
+        path: ${{ steps.strings.outputs.build-output-dir }}/Testing/Temporary/LastTest.log
+        if-no-files-found: warn
+
   windows-installer-amd64:
     runs-on: windows-latest
     needs: build
