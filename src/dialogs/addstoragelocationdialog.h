@@ -41,6 +41,5 @@ private:
     QLineEdit*         mNameEdit;
     QDialogButtonBox*  mButtons;
 
-    QString buildPath(const QString& connectionName) const;
-    void    validate();
+    void validate();
 };

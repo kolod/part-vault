@@ -22,6 +22,9 @@
 #include <mz_zip_rw.h>
 
 #include <QFile>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QStringList>
 #include "utils.h"
 
 QString stripSqlComments(const QString& sql) {
@@ -127,4 +130,25 @@ bool extractZipArchive(const QString& archivePath, const QString& destinationDir
     mz_zip_reader_close(reader);
     mz_zip_reader_delete(&reader);
     return true;
+}
+
+QString buildAncestorPath(const QString& connectionName, const QString& table, int id) {
+    if (id <= 0) return {};
+
+    QSqlDatabase db = QSqlDatabase::database(connectionName);
+    QSqlQuery q(db);
+
+    QStringList parts;
+    int current = id;
+    while (current > 0) {
+        q.prepare(QStringLiteral("SELECT name, parent_id FROM %1 WHERE id = ?").arg(table));
+        q.addBindValue(current);
+        if (!q.exec() || !q.next()) {
+            qWarning() << "buildAncestorPath: row" << current << "not found in" << table;
+            break;
+        }
+        parts.prepend(q.value(0).toString());
+        current = q.value(1).isNull() ? 0 : q.value(1).toInt();
+    }
+    return parts.join(QStringLiteral(" > "));
 }

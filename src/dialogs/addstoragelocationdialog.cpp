@@ -15,7 +15,7 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "addstoragelocationdialog.h"
-
+#include "../utils.h"
 
 #include <QLineEdit>
 #include <QDialogButtonBox>
@@ -23,9 +23,6 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QDebug>
 
 AddStorageLocationDialog::AddStorageLocationDialog(const QString& connectionName, int parentId, QWidget* parent)
     : QDialog(parent), mParentId(parentId)
@@ -35,7 +32,7 @@ AddStorageLocationDialog::AddStorageLocationDialog(const QString& connectionName
 
     mNameEdit = new QLineEdit(this);
 
-    const QString path = buildPath(connectionName);
+    const QString path = buildAncestorPath(connectionName, QStringLiteral("storage_locations"), mParentId);
     auto* pathLabel = new QLabel(path.isEmpty() ? tr("(top level)") : path, this);
     pathLabel->setWordWrap(true);
 
@@ -63,28 +60,6 @@ QString AddStorageLocationDialog::name() const
 int AddStorageLocationDialog::parentId() const
 {
     return mParentId;
-}
-
-QString AddStorageLocationDialog::buildPath(const QString& connectionName) const
-{
-    if (mParentId <= 0) return {};
-
-    QSqlDatabase db = QSqlDatabase::database(connectionName);
-    QSqlQuery q(db);
-
-    QStringList parts;
-    int current = mParentId;
-    while (current > 0) {
-        q.prepare("SELECT name, parent_id FROM storage_locations WHERE id = ?");
-        q.addBindValue(current);
-        if (!q.exec() || !q.next()) {
-            qWarning() << "AddStorageLocationDialog: location" << current << "not found";
-            break;
-        }
-        parts.prepend(q.value(0).toString());
-        current = q.value(1).isNull() ? 0 : q.value(1).toInt();
-    }
-    return parts.join(QString(" \u2192 "));
 }
 
 void AddStorageLocationDialog::validate()

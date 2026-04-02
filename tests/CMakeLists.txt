@@ -4,7 +4,7 @@ qt_add_executable(test_utils
     ../src/utils.h
 )
 
-target_link_libraries(test_utils PRIVATE Qt::Core Qt::Test MINIZIP::minizip)
+target_link_libraries(test_utils PRIVATE Qt::Core Qt::Sql Qt::Test MINIZIP::minizip)
 
 add_test(NAME test_utils COMMAND test_utils)
 

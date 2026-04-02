@@ -370,6 +370,9 @@ bool readManifest(const QString& manifestPath, QJsonObject* manifestObject, QStr
     return true;
 }
 
+// Returns a minimal but syntactically valid file header for the given path's
+// extension (.pdf → PDF 1.1, .step → ISO-10303-21), or a plain-text stub for
+// any other extension.  Used only in tests and demo imports, never for real files.
 QByteArray dummyFileContents(const QString& path, const QString& type, const QString& description) {
     if (path.endsWith(".pdf", Qt::CaseInsensitive)) {
         return QByteArrayLiteral(

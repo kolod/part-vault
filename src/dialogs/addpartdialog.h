@@ -45,6 +45,5 @@ private:
     int               mCategoryId;
     int               mLocationId;
 
-    QString buildPath(const QString& connectionName, const QString& table, int id) const;
     void validate();
 };

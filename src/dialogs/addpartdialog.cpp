@@ -15,18 +15,15 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "addpartdialog.h"
-
+#include "../utils.h"
 
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QLabel>
 #include <QDialogButtonBox>
+#include <QPushButton>
 #include <QFormLayout>
 #include <QVBoxLayout>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QPushButton>
-#include <QDebug>
 
 AddPartDialog::AddPartDialog(const QString& connectionName, int categoryId, int locationId, QWidget* parent)
     : QDialog(parent), mCategoryId(categoryId), mLocationId(locationId)
@@ -41,8 +38,8 @@ AddPartDialog::AddPartDialog(const QString& connectionName, int categoryId, int 
     mQuantitySpin->setRange(0, 999999);
     mQuantitySpin->setValue(1);
 
-    const QString catPath = buildPath(connectionName, "categories", categoryId);
-    const QString locPath = buildPath(connectionName, "storage_locations", locationId);
+    const QString catPath = buildAncestorPath(connectionName, QStringLiteral("categories"),        categoryId);
+    const QString locPath = buildAncestorPath(connectionName, QStringLiteral("storage_locations"), locationId);
 
     auto* catLabel = new QLabel(catPath.isEmpty() ? tr("(none)") : catPath, this);
     auto* locLabel = new QLabel(locPath.isEmpty() ? tr("(none)") : locPath, this);
@@ -80,26 +77,6 @@ int AddPartDialog::categoryId() const {
 
 int AddPartDialog::locationId() const {
     return mLocationId;
-}
-
-QString AddPartDialog::buildPath(const QString& connectionName, const QString& table, int id) const {
-    if (id <= 0) return {};
-
-    QSqlDatabase db = QSqlDatabase::database(connectionName);
-    QSqlQuery q(db);
-    QStringList parts;
-    int current = id;
-    while (current > 0) {
-        q.prepare(QString("SELECT name, parent_id FROM %1 WHERE id = ?").arg(table));
-        q.addBindValue(current);
-        if (!q.exec() || !q.next()) {
-            qWarning() << "AddPartDialog: row" << current << "not found in" << table;
-            break;
-        }
-        parts.prepend(q.value(0).toString());
-        current = q.value(1).isNull() ? 0 : q.value(1).toInt();
-    }
-    return parts.join(QString(" \u2192 "));
 }
 
 void AddPartDialog::validate() {

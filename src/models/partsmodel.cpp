@@ -22,7 +22,6 @@
 #include <QSqlError>
 #include <QPalette>
 #include <QApplication>
-#include <QDebug>
 
 PartsModel::PartsModel(const QString& connectionName, QObject* parent)
     : QAbstractTableModel(parent), mConnectionName(connectionName)
@@ -32,14 +31,12 @@ PartsModel::PartsModel(const QString& connectionName, QObject* parent)
 
 void PartsModel::setCategory(int categoryId) {
     if (mCategoryFilter == categoryId) return;
-    qDebug() << "PartsModel: category filter changed" << mCategoryFilter << "->" << categoryId;
     mCategoryFilter = categoryId;
     reload();
 }
 
 void PartsModel::setStorageLocation(int locationId) {
     if (mStorageFilter == locationId) return;
-    qDebug() << "PartsModel: storage filter changed" << mStorageFilter << "->" << locationId;
     mStorageFilter = locationId;
     reload();
 }
@@ -59,47 +56,41 @@ int PartsModel::partId(int row) const {
 
 QList<int> PartsModel::categoryDescendants(int rootId) const {
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
+    QSqlQuery q(db);
+    q.prepare(
+        "WITH RECURSIVE desc(id) AS ("
+        "  SELECT :root"
+        "  UNION ALL"
+        "  SELECT c.id FROM categories c JOIN desc d ON c.parent_id = d.id"
+        ") SELECT id FROM desc");
+    q.bindValue(":root", rootId);
     QList<int> result;
-    QList<int> queue = {rootId};
-
-    QSqlQuery query(db);
-    while (!queue.isEmpty()) {
-        const int current = queue.takeFirst();
-        result.append(current);
-        query.prepare("SELECT id FROM categories WHERE parent_id = :pid");
-        query.bindValue(":pid", current);
-        if (query.exec()) {
-            while (query.next())
-                queue.append(query.value(0).toInt());
-        } else {
-            qWarning() << "PartsModel: categoryDescendants query failed for id" << current
-                       << ":" << query.lastError().text();
-        }
+    if (q.exec()) {
+        while (q.next())
+            result.append(q.value(0).toInt());
+    } else {
+        qWarning() << "PartsModel: categoryDescendants failed:" << q.lastError().text();
     }
-    qDebug() << "PartsModel: category" << rootId << "expands to" << result.size() << "ids:" << result;
     return result;
 }
 
 QList<int> PartsModel::storageDescendants(int rootId) const {
     QSqlDatabase db = QSqlDatabase::database(mConnectionName);
+    QSqlQuery q(db);
+    q.prepare(
+        "WITH RECURSIVE desc(id) AS ("
+        "  SELECT :root"
+        "  UNION ALL"
+        "  SELECT s.id FROM storage_locations s JOIN desc d ON s.parent_id = d.id"
+        ") SELECT id FROM desc");
+    q.bindValue(":root", rootId);
     QList<int> result;
-    QList<int> queue = {rootId};
-
-    QSqlQuery query(db);
-    while (!queue.isEmpty()) {
-        const int current = queue.takeFirst();
-        result.append(current);
-        query.prepare("SELECT id FROM storage_locations WHERE parent_id = :pid");
-        query.bindValue(":pid", current);
-        if (query.exec()) {
-            while (query.next())
-                queue.append(query.value(0).toInt());
-        } else {
-            qWarning() << "PartsModel: storageDescendants query failed for id" << current
-                       << ":" << query.lastError().text();
-        }
+    if (q.exec()) {
+        while (q.next())
+            result.append(q.value(0).toInt());
+    } else {
+        qWarning() << "PartsModel: storageDescendants failed:" << q.lastError().text();
     }
-    qDebug() << "PartsModel: storage" << rootId << "expands to" << result.size() << "ids:" << result;
     return result;
 }
 
@@ -111,18 +102,17 @@ void PartsModel::fetchParts() {
         qWarning() << "PartsModel: database not open (connection:" << mConnectionName << ")";
         return;
     }
-    qDebug() << "PartsModel: fetching parts, category filter =" << mCategoryFilter;
 
-    // Fetch all columns needed to populate PartRecord.
-    // p.id, p.name, p.quantity — core part fields.
-    // c.name  — resolved via LEFT JOIN so parts with no category return an empty string.
-    // sl.name — resolved via LEFT JOIN so parts with no storage location return an empty string.
-    // A WHERE clause is appended below when a category filter is active.
+    // loc_path pre-computes the full ancestor path string (e.g. "Cabinet > Drawer") for
+    // every storage location.  The anchor seeds from virtual-root children (parent_id = 0)
+    // AND from orphaned locations whose parent was deleted (parent_id IS NULL, excluding
+    // the virtual root itself at id = 0).  The recursive step appends child names with →.
     QString sql =
         "WITH RECURSIVE loc_path(id, path) AS ("
-        "  SELECT id, name FROM storage_locations WHERE parent_id = 0"
+        "  SELECT id, name FROM storage_locations"
+        "  WHERE parent_id = 0 OR (parent_id IS NULL AND id != 0)"
         "  UNION ALL"
-        "  SELECT s.id, lp.path || ' > ' || s.name"
+        "  SELECT s.id, lp.path || ' \u2192 ' || s.name"
         "  FROM storage_locations AS s JOIN loc_path AS lp ON s.parent_id = lp.id"
         ") "
         "SELECT p.id, p.name, p.quantity, COALESCE(c.name, ''), COALESCE(lp.path, ''), p.last_change "
@@ -162,8 +152,6 @@ void PartsModel::fetchParts() {
     for (const int id : storageIds)
         query.addBindValue(id);
 
-    qDebug() << "PartsModel: SQL:" << sql;
-
     if (!query.exec()) {
         qWarning() << "PartsModel: exec failed:" << query.lastError().text();
         return;
@@ -179,8 +167,6 @@ void PartsModel::fetchParts() {
             query.value(5).toString()
         });
     }
-
-    qDebug() << "PartsModel: loaded" << mParts.size() << "parts";
 }
 
 // ── QAbstractTableModel ───────────────────────────────────────────────────────
@@ -196,17 +182,14 @@ int PartsModel::columnCount(const QModelIndex& parent) const {
 }
 
 QVariant PartsModel::data(const QModelIndex& index, int role) const {
-    // Validate the index and return an empty QVariant if it's out of range.
     if (!index.isValid() || index.row() >= mParts.size())
         return {};
 
-    // Get the part record for the given row.
     const PartRecord& p = mParts.at(index.row());
 
     // For the custom IdRole, return the part id regardless of the column.
     if (role == IdRole) return p.id;
 
-    // For display and editing, return the appropriate field based on the column.
     if (role == Qt::DisplayRole || role == Qt::EditRole) switch (index.column()) {
         case ColName:       return p.name;
         case ColQuantity:   return p.quantity;
@@ -227,7 +210,6 @@ QVariant PartsModel::data(const QModelIndex& index, int role) const {
 }
 
 QVariant PartsModel::headerData(int section, Qt::Orientation orientation, int role) const {
-    // Horizontal headers show column names.
     if (orientation == Qt::Horizontal && role == Qt::DisplayRole) switch (section) {
         case ColName:       return tr("Name");
         case ColQuantity:   return tr("Qty");

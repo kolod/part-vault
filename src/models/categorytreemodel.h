@@ -19,7 +19,6 @@
 #include "reloadabletreemodel.h"
 #include <QString>
 #include <QList>
-#include <QSet>
 
 // Internal tree node — one per category row.
 struct CategoryNode

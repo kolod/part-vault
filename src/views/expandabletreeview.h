@@ -39,6 +39,9 @@ private:
     QSet<int> snapshotExpanded() const;
     void restoreExpanded(const QSet<int>& ids);
 
+    void collectExpanded(const QModelIndex& parent, QSet<int>& ids) const;
+    void doRestoreExpanded(const QModelIndex& parent, const QSet<int>& ids);
+
     // Must match the IdRole defined in both tree models.
     static constexpr int IdRole = Qt::UserRole + 1;
 };

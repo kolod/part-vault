@@ -15,16 +15,13 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "addcategorydialog.h"
-
+#include "../utils.h"
 
 #include <QLineEdit>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QVBoxLayout>
 #include <QLabel>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QDebug>
 #include <QPushButton>
 
 AddCategoryDialog::AddCategoryDialog(const QString& connectionName, int parentId, QWidget* parent)
@@ -35,7 +32,7 @@ AddCategoryDialog::AddCategoryDialog(const QString& connectionName, int parentId
 
     mNameEdit = new QLineEdit(this);
 
-    const QString path = buildPath(connectionName);
+    const QString path = buildAncestorPath(connectionName, QStringLiteral("categories"), mParentId);
     auto* pathLabel = new QLabel(path.isEmpty() ? tr("(top level)") : path, this);
     pathLabel->setWordWrap(true);
 
@@ -64,28 +61,6 @@ int AddCategoryDialog::parentId() const {
 }
 
 // ── private ──────────────────────────────────────────────────────────────────
-
-// Walk parent_id up from mParentId and build "Root → Child → …" display string.
-QString AddCategoryDialog::buildPath(const QString& connectionName) const {
-    if (mParentId <= 0) return {};
-
-    QSqlDatabase db = QSqlDatabase::database(connectionName);
-    QSqlQuery q(db);
-
-    QStringList parts;
-    int current = mParentId;
-    while (current > 0) {
-        q.prepare("SELECT name, parent_id FROM categories WHERE id = ?");
-        q.addBindValue(current);
-        if (!q.exec() || !q.next()) {
-            qWarning() << "AddCategoryDialog: category" << current << "not found";
-            break;
-        }
-        parts.prepend(q.value(0).toString());
-        current = q.value(1).isNull() ? 0 : q.value(1).toInt();
-    }
-    return parts.join(QString(" > "));
-}
 
 void AddCategoryDialog::validate() {
     mButtons->button(QDialogButtonBox::Ok)->setEnabled(!name().isEmpty());

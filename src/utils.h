@@ -29,3 +29,8 @@ bool createZipArchive(const QString& archivePath, const QString& sourceDirPath, 
 
 // Extracts the ZIP archive at archivePath into destinationDirPath.
 bool extractZipArchive(const QString& archivePath, const QString& destinationDirPath, QString* errorMessage);
+
+// Walks the parent_id chain upward from id in the given table and returns the
+// full ancestor path as "Root → Child → …".  Returns an empty string if id ≤ 0.
+// table must be either "categories" or "storage_locations".
+QString buildAncestorPath(const QString& connectionName, const QString& table, int id);

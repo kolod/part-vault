@@ -16,6 +16,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "database.h"
 #include "models/filesmodel.h"
 #include "models/categorytreemodel.h"
 #include "models/storagetreemodel.h"
@@ -39,16 +40,14 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Parts table
+    // ── Models ────────────────────────────────────────────────────────────────
     const QString conn = mDatabaseManager.database().connectionName();
-
-    // Create models
     mPartsModel    = new PartsModel(conn, this);
     mFilesModel    = new FilesModel(conn, this);
     mCategoryModel = new CategoryTreeModel(conn, this);
     mStorageModel  = new StorageTreeModel(conn, this);
 
-    // Category tree view
+    // ── Category tree ─────────────────────────────────────────────────────────
     ui->viewCategories->setModel(mCategoryModel);
     ui->viewCategories->setDragEnabled(true);
     ui->viewCategories->setAcceptDrops(true);
@@ -56,10 +55,10 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     ui->viewCategories->setDragDropMode(QAbstractItemView::DragDrop);
     ui->viewCategories->setDefaultDropAction(Qt::MoveAction);
 
-    // Storage locations tree view
+    // ── Storage locations tree ────────────────────────────────────────────────
     ui->viewStorageLocations->setModel(mStorageModel);
 
-    // Parts table view
+    // ── Parts table ───────────────────────────────────────────────────────────
     ui->tableView->setModel(mPartsModel);
     ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColName,       QHeaderView::Stretch);
     ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColQuantity,   QHeaderView::ResizeToContents);
@@ -70,7 +69,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableView->verticalHeader()->setVisible(false);
 
-    // Files list view
+    // ── Files list ────────────────────────────────────────────────────────────
     ui->viewFiles->setModel(mFilesModel);
     ui->viewFiles->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->viewFiles->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -146,9 +145,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         menu.exec(ui->viewFiles->viewport()->mapToGlobal(pos));
     });
 
-    // Menu actions
-
-    // Export action
+    // ── File menu ─────────────────────────────────────────────────────────────
     connect(ui->actionExport, &QAction::triggered, this, [this]() {
         const QString archivePath = QFileDialog::getSaveFileName(
             this,
@@ -210,6 +207,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     // Exit action
     connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);
     
+    // ── Help menu ─────────────────────────────────────────────────────────────
     // About action
     connect(ui->actionAbout, &QAction::triggered, this, []() {
         QMessageBox::about(nullptr, tr("About PartVault"),
@@ -223,6 +221,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         QMessageBox::aboutQt(nullptr, tr("About Qt"));
     });
 
+    // ── Edit menu ─────────────────────────────────────────────────────────────
     // Add Category action
     connect(ui->actionAddCategory, &QAction::triggered, this, [this]() {
         const QString conn = mDatabaseManager.database().connectionName();
@@ -349,6 +348,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         }
     });
 
+    // ── View menu ─────────────────────────────────────────────────────────────
     // View Show/Hide Category Dock action
     connect(ui->actionCategories, &QAction::triggered, this, [this](bool checked) {
         ui->dockCategories->setVisible(checked);
@@ -379,6 +379,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         ui->actionFiles->setChecked(visible);
     });
 
+    // ── Category tree: context menu + drag-drop ───────────────────────────────
     // Context menu for category tree
     ui->viewCategories->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->viewCategories, &QTreeView::customContextMenuRequested, this, [this](const QPoint& pos) {
@@ -402,6 +403,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
         ui->viewCategories->setCurrentIndex(mCategoryModel->indexForId(categoryId));
     });
 
+    // ── Storage locations tree: context menu ─────────────────────────────────
     // Context menu for storage locations tree
     ui->viewStorageLocations->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->viewStorageLocations, &QTreeView::customContextMenuRequested, this, [this](const QPoint& pos) {
@@ -411,6 +413,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
             ui->actionAddSorageLocation->trigger();
     });
 
+    // ── Filter + selection connections ───────────────────────────────────────
     // Filter by category when a category is selected in the tree view
     connect( ui->viewCategories->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
         const int catId = mCategoryModel->categoryId(current);

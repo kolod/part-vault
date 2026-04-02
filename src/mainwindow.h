@@ -24,11 +24,11 @@
 #include <QAction>
 #include <QMessageBox>
 
-#include "database.h"
-#include "models/filesmodel.h"
-#include "models/partsmodel.h"
-#include "models/categorytreemodel.h"
-#include "models/storagetreemodel.h"
+class DatabaseManager;
+class FilesModel;
+class PartsModel;
+class CategoryTreeModel;
+class StorageTreeModel;
 
 // QTreeView subclass that prevents the parent QComboBox from closing its
 // popup when the user clicks a branch expand/collapse indicator.

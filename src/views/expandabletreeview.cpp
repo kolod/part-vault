@@ -16,7 +16,6 @@
 
 #include "views/expandabletreeview.h"
 #include "models/reloadabletreemodel.h"
-#include <functional>
 
 TreeViewEx::TreeViewEx(QWidget* parent)
     : QTreeView(parent)
@@ -36,27 +35,31 @@ void TreeViewEx::reloadPreservingExpanded()
 QSet<int> TreeViewEx::snapshotExpanded() const
 {
     QSet<int> ids;
-    std::function<void(const QModelIndex&)> collect = [&](const QModelIndex& parent) {
-        for (int r = 0; r < model()->rowCount(parent); ++r) {
-            const QModelIndex idx = model()->index(r, 0, parent);
-            if (isExpanded(idx))
-                ids.insert(model()->data(idx, IdRole).toInt());
-            collect(idx);
-        }
-    };
-    collect(QModelIndex{});
+    collectExpanded(QModelIndex{}, ids);
     return ids;
+}
+
+void TreeViewEx::collectExpanded(const QModelIndex& parent, QSet<int>& ids) const
+{
+    for (int r = 0; r < model()->rowCount(parent); ++r) {
+        const QModelIndex idx = model()->index(r, 0, parent);
+        if (isExpanded(idx))
+            ids.insert(model()->data(idx, IdRole).toInt());
+        collectExpanded(idx, ids);
+    }
 }
 
 void TreeViewEx::restoreExpanded(const QSet<int>& ids)
 {
-    std::function<void(const QModelIndex&)> restore = [&](const QModelIndex& parent) {
-        for (int r = 0; r < model()->rowCount(parent); ++r) {
-            const QModelIndex idx = model()->index(r, 0, parent);
-            if (ids.contains(model()->data(idx, IdRole).toInt()))
-                expand(idx);
-            restore(idx);
-        }
-    };
-    restore(QModelIndex{});
+    doRestoreExpanded(QModelIndex{}, ids);
+}
+
+void TreeViewEx::doRestoreExpanded(const QModelIndex& parent, const QSet<int>& ids)
+{
+    for (int r = 0; r < model()->rowCount(parent); ++r) {
+        const QModelIndex idx = model()->index(r, 0, parent);
+        if (ids.contains(model()->data(idx, IdRole).toInt()))
+            expand(idx);
+        doRestoreExpanded(idx, ids);
+    }
 }
