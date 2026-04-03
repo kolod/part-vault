@@ -335,6 +335,27 @@ jobs:
           /nv   # /nv = no validation, accepts developer builds without Store validation
 
     # ── 5. Sign MSIX ───────────────────────────────────────────────────────────
+    - name: Diagnose certificate secret
+      shell: pwsh
+      run: |
+        $raw = "${{ secrets.MSIX_CERTIFICATE_BASE64 }}"
+        Write-Host "Raw length      : $($raw.Length)"
+
+        $stripped = $raw -replace '\s', ''
+        Write-Host "Stripped length : $($stripped.Length)"
+
+        # Report every unique character that is NOT a valid base64 or padding character
+        $invalid = $stripped.ToCharArray() |
+          Where-Object { $_ -notmatch '[A-Za-z0-9+/=]' } |
+          Select-Object -Unique
+        if ($invalid) {
+            Write-Host "Invalid characters (hex codepoints):"
+            $invalid | ForEach-Object { Write-Host "  U+$([int]$_ | ForEach-Object { '{0:X4}' -f $_ })" }
+        } else {
+            Write-Host "No invalid characters found — padding or length may be wrong"
+            Write-Host "Length mod 4    : $($stripped.Length % 4)"
+        }
+
     - name: Import signing certificate
       # Decode the base64 PFX secret, import it into the certificate store,
       # then expose only the thumbprint as an env variable — the PFX file is
