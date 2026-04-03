@@ -362,8 +362,9 @@ jobs:
       # deleted immediately to avoid leaving credentials on disk.
       shell: pwsh
       run: |
-        # Strip whitespace/newlines that base64 encoders (certutil, openssl) insert
-        $b64 = "${{ secrets.MSIX_CERTIFICATE_BASE64 }}" -replace '\s', ''
+        # Strip whitespace/newlines that base64 encoders (certutil, openssl) insert.
+        # Also translate base64url characters (- → +, _ → /) to standard base64.
+        $b64 = "${{ secrets.MSIX_CERTIFICATE_BASE64 }}" -replace '\s', '' -replace '-', '+' -replace '_', '/'
         $certBytes = [Convert]::FromBase64String($b64)
         $certPath  = Join-Path $env:RUNNER_TEMP "signing.pfx"
         [IO.File]::WriteAllBytes($certPath, $certBytes)
