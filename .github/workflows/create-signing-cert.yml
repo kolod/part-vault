@@ -1,0 +1,100 @@
+name: Create signing certificate
+
+# Run manually only — generates a new self-signed code-signing certificate,
+# prints the base64 to the job summary (masked from logs), and uploads the
+# PFX as a short-lived artifact so you can download it.
+#
+# After the run:
+#   1. Copy the base64 from the job summary into repository secret MSIX_CERTIFICATE_BASE64
+#   2. Set repository secret MSIX_CERTIFICATE_PASSWORD to the password you supplied
+#   3. Delete the artifact immediately after downloading (it contains the private key)
+on:
+  workflow_dispatch:
+    inputs:
+      subject:
+        description: Certificate subject (CN=...)
+        required: true
+        default: CN=PartVaultDev
+      password:
+        description: PFX password
+        required: true
+
+jobs:
+  create-cert:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Generate certificate
+      id: gencert
+      shell: pwsh
+      run: |
+        $password = "${{ inputs.password }}"
+        $subject  = "${{ inputs.subject }}"
+
+        # Create self-signed code-signing certificate
+        $cert = New-SelfSignedCertificate `
+            -Subject           $subject `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -KeyUsage          DigitalSignature `
+            -KeyAlgorithm      RSA `
+            -KeyLength         2048 `
+            -HashAlgorithm     SHA256 `
+            -Type              CodeSigningCert `
+            -NotAfter          (Get-Date).AddYears(3)
+
+        Write-Host "Thumbprint : $($cert.Thumbprint)"
+        Write-Host "Subject    : $($cert.Subject)"
+        Write-Host "Expires    : $($cert.NotAfter)"
+
+        # Export PFX
+        $pfxPath    = Join-Path $env:RUNNER_TEMP "signing-cert.pfx"
+        $securePass = ConvertTo-SecureString $password -AsPlainText -Force
+        Export-PfxCertificate `
+            -Cert     "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
+            -FilePath $pfxPath `
+            -Password $securePass | Out-Null
+
+        # Encode to standard base64 (no line breaks, no + → - substitution)
+        $bytes  = [IO.File]::ReadAllBytes($pfxPath)
+        $base64 = [Convert]::ToBase64String($bytes)
+
+        # Verify round-trip
+        $roundTrip = [Convert]::FromBase64String($base64)
+        if (($roundTrip.Length -ne $bytes.Length) -or
+            (($roundTrip | Measure-Object -Sum).Sum -ne ($bytes | Measure-Object -Sum).Sum)) {
+            Write-Error "Base64 round-trip verification failed"
+            exit 1
+        }
+
+        # Expose PFX path to the upload step
+        "pfx_path=$pfxPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+        # Write base64 to the job summary (visible in the Actions UI, not in raw logs)
+        @"
+        ## Signing certificate generated
+
+        **Subject**: $($cert.Subject)
+        **Thumbprint**: $($cert.Thumbprint)
+        **Expires**: $($cert.NotAfter)
+
+        Copy the value below into repository secret **MSIX_CERTIFICATE_BASE64**:
+
+        ``````
+        $base64
+        ``````
+
+        Set repository secret **MSIX_CERTIFICATE_PASSWORD** to the password you entered.
+
+        > **Security**: delete the artifact as soon as you have saved the secrets.
+        "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+    - name: Upload PFX artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: signing-cert-pfx
+        # Retention kept short — download immediately and delete
+        retention-days: 1
+        path: ${{ steps.gencert.outputs.pfx_path }}
