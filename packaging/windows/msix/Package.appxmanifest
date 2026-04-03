@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+    <Identity Name="7428e84b-f10d-4371-87ce-0d66221f6988" Publisher="CN=PartVaultApp" Version="1.0.0.0" />
+
+    <Properties>
+        <DisplayName>PartVault</DisplayName>
+        <PublisherDisplayName>Oleksandr Kolodkin</PublisherDisplayName>
+        <Logo>Assets\StoreLogo.png</Logo>
+    </Properties>
+
+    <Dependencies>
+        <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+    </Dependencies>
+  
+    <Resources>
+        <Resource Language="x-generate"/>
+    </Resources>
+
+    <Applications>
+        <Application Id="App" Executable="PartVault.exe" EntryPoint="Windows.FullTrustApplication">
+        <uap:VisualElements
+            DisplayName="PartVault"
+            Description="Simple inventory manager for electronic components. Organize, search, and track your parts with a clean, structured catalog"
+            BackgroundColor="transparent"
+            Square150x150Logo="Assets\Square150x150Logo.png"
+            Square44x44Logo="Assets\Square44x44Logo.png">
+            <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+            <uap:SplashScreen Image="Assets\SplashScreen.png" />
+        </uap:VisualElements>
+        </Application>
+    </Applications>
+
+    <Capabilities>
+        <!-- Required for packaged Win32 / Qt desktop executables -->
+        <rescap:Capability Name="runFullTrust" />
+    </Capabilities>
+
+</Package>
