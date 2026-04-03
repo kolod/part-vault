@@ -9,42 +9,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # ── Path filter ─────────────────────────────────────────────────────────────
-  # Detect which areas of the repo changed so downstream jobs can skip
-  # themselves when their inputs are untouched.
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      src:       ${{ steps.filter.outputs.src }}
-      docs:      ${{ steps.filter.outputs.docs }}
-      packaging: ${{ steps.filter.outputs.packaging }}
-      msix:      ${{ steps.filter.outputs.msix }}
-    steps:
-    - uses: actions/checkout@v6
-    - uses: dorny/paths-filter@v3
-      id: filter
-      with:
-        filters: |
-          src:
-            - 'src/**'
-            - 'tests/**'
-            - 'CMakeLists.txt'
-          docs:
-            - 'src/**'
-            - 'docs/**'
-          packaging:
-            - 'src/**'
-            - 'CMakeLists.txt'
-            - 'packaging/**'
-          msix:
-            - 'src/**'
-            - 'CMakeLists.txt'
-            - 'packaging/windows/msix/**'
-
-  # ────────────────────────────────────────────────────────────────────────────
   build:
-    needs: changes
-    if: needs.changes.outputs.src == 'true'
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -135,8 +100,6 @@ jobs:
 
   docs:
     runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.docs == 'true'
 
     steps:
     - name: Checkout code
@@ -175,8 +138,7 @@ jobs:
 
   windows-installer-amd64:
     runs-on: windows-latest
-    needs: [changes, build]
-    if: needs.changes.outputs.packaging == 'true'
+    needs: build
 
     steps:
     - name: Checkout code
@@ -220,8 +182,7 @@ jobs:
 
   deb-package:
     runs-on: ubuntu-latest
-    needs: [changes, build]
-    if: needs.changes.outputs.packaging == 'true'
+    needs: build
 
     steps:
     - name: Checkout code
@@ -279,8 +240,7 @@ jobs:
   # ────────────────────────────────────────────────────────────────────────────
   msix:
     runs-on: windows-latest
-    needs: [changes, build]
-    if: needs.changes.outputs.msix == 'true'
+    needs: build
 
     strategy:
       fail-fast: false

@@ -72,29 +72,34 @@ jobs:
         # Expose PFX path to the upload step
         "pfx_path=$pfxPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-        # Write base64 to the job summary (visible in the Actions UI, not in raw logs)
+        # Write base64 to a plain text file — no Markdown rendering, safe to copy verbatim
+        $base64OutPath = Join-Path $env:RUNNER_TEMP "MSIX_CERTIFICATE_BASE64.txt"
+        [IO.File]::WriteAllText($base64OutPath, $base64, [Text.Encoding]::ASCII)
+        "b64_path=$base64OutPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+        # Write non-sensitive info to the job summary only
         @"
         ## Signing certificate generated
 
-        **Subject**: $($cert.Subject)
-        **Thumbprint**: $($cert.Thumbprint)
-        **Expires**: $($cert.NotAfter)
+        | Field | Value |
+        |---|---|
+        | Subject | $($cert.Subject) |
+        | Thumbprint | $($cert.Thumbprint) |
+        | Expires | $($cert.NotAfter) |
 
-        Copy the value below into repository secret **MSIX_CERTIFICATE_BASE64**:
-
-        ``````
-        $base64
-        ``````
-
-        Set repository secret **MSIX_CERTIFICATE_PASSWORD** to the password you entered.
-
-        > **Security**: delete the artifact as soon as you have saved the secrets.
+        **Next steps:**
+        1. Download the **signing-cert** artifact
+        2. Copy the content of `MSIX_CERTIFICATE_BASE64.txt` verbatim into secret **MSIX_CERTIFICATE_BASE64**
+        3. Set secret **MSIX_CERTIFICATE_PASSWORD** to the password you entered
+        4. Delete the artifact immediately
         "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
     - name: Upload PFX artifact
       uses: actions/upload-artifact@v4
       with:
-        name: signing-cert-pfx
+        name: signing-cert
         # Retention kept short — download immediately and delete
         retention-days: 1
-        path: ${{ steps.gencert.outputs.pfx_path }}
+        path: |
+          ${{ steps.gencert.outputs.pfx_path }}
+          ${{ steps.gencert.outputs.b64_path }}
