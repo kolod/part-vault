@@ -246,17 +246,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Native x64 build
+          # Native x64 build — Qt 6.10.0 only ships win64_msvc2022_64 for Windows
           - arch: amd64
             cmake_arch: x64
             qt_arch: win64_msvc2022_64
             msvc_arch: amd64
-
-          # Cross-compiled arm64 build (host toolchain targets ARM64)
-          - arch: arm64
-            cmake_arch: ARM64
-            qt_arch: win64_msvc2022_arm64
-            msvc_arch: amd64_arm64
 
     steps:
     # ── 1. Checkout ────────────────────────────────────────────────────────────
@@ -313,11 +307,16 @@ jobs:
 
     # ── 4. Package into MSIX ───────────────────────────────────────────────────
     - name: Copy MSIX manifest and assets
-      # The app manifest and logo assets live under packaging/windows/msix/ in the repo
+      # MakeAppx.exe requires the manifest to be named AppxManifest.xml exactly.
+      # The repo keeps the Visual Studio name (Package.appxmanifest), so copy it
+      # explicitly with the required name, then copy the Assets folder separately.
       shell: pwsh
       run: |
-        Copy-Item -Path "${{ github.workspace }}\packaging\windows\msix\*" `
-          -Destination "${{ github.workspace }}\staging-${{ matrix.arch }}" `
+        Copy-Item -Path "${{ github.workspace }}\packaging\windows\msix\Package.appxmanifest" `
+          -Destination "${{ github.workspace }}\staging-${{ matrix.arch }}\AppxManifest.xml" `
+          -Force
+        Copy-Item -Path "${{ github.workspace }}\packaging\windows\msix\Assets" `
+          -Destination "${{ github.workspace }}\staging-${{ matrix.arch }}\Assets" `
           -Recurse -Force
 
     - name: Package MSIX with MakeAppx
