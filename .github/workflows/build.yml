@@ -340,6 +340,7 @@ jobs:
       run: |
         $raw = "${{ secrets.MSIX_CERTIFICATE_BASE64 }}"
         Write-Host "Raw length      : $($raw.Length)"
+        Write-Host "Raw sample      : $($raw)"
 
         $stripped = $raw -replace '\s', ''
         Write-Host "Stripped length : $($stripped.Length)"
