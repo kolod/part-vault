@@ -14,7 +14,7 @@
    <string notr="true">PartVault</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../build/Desktop_Qt_6_11_0_llvm_mingw_64_bit-Debug/src/.qt/rcc/sql.qrc">
+   <iconset resource="../build/Desktop_Qt_6_11_0_MSVC2022_64bit-Debug/src/.qt/rcc/sql.qrc">
     <normaloff>:/icons/logo.svg</normaloff>:/icons/logo.svg</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -35,7 +35,7 @@
      <number>0</number>
     </property>
     <item row="0" column="0">
-     <widget class="QTableView" name="tableView"/>
+     <widget class="QTableView" name="viewParts"/>
     </item>
    </layout>
   </widget>
@@ -71,15 +71,15 @@
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
-    <widget class="QMenu" name="menuFiles">
-     <property name="title">
-      <string>Fi&amp;les</string>
-     </property>
-     <addaction name="actionOpenFile"/>
-     <addaction name="actionOpenDirectory"/>
+   <widget class="QMenu" name="menuFiles">
+    <property name="title">
+     <string>Fi&amp;les</string>
+    </property>
+    <addaction name="actionOpenFile"/>
+    <addaction name="actionOpenDirectory"/>
     <addaction name="separator"/>
     <addaction name="actionRemoveUnusedFiles"/>
-    </widget>
+   </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
      <string>&amp;Help</string>
@@ -92,6 +92,7 @@
      <string>&amp;Parts</string>
     </property>
     <addaction name="actionAddPart"/>
+    <addaction name="actionAddFile"/>
     <addaction name="actionRemovePart"/>
    </widget>
    <widget class="QMenu" name="menuCategories">
@@ -117,7 +118,7 @@
     <addaction name="actionFiles"/>
    </widget>
    <addaction name="menuFile"/>
-  <addaction name="menuFiles"/>
+   <addaction name="menuFiles"/>
    <addaction name="menuParts"/>
    <addaction name="menuCategories"/>
    <addaction name="menuPlaces"/>
@@ -242,6 +243,14 @@
     <string>&amp;Remove part</string>
    </property>
   </action>
+  <action name="actionAddFile">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Add &amp;File...</string>
+   </property>
+  </action>
   <action name="actionAddCategory">
    <property name="text">
     <string>&amp;Add category...</string>
@@ -345,7 +354,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../build/Desktop_Qt_6_11_0_llvm_mingw_64_bit-Debug/src/.qt/rcc/sql.qrc"/>
+  <include location="../build/Desktop_Qt_6_11_0_MSVC2022_64bit-Debug/src/.qt/rcc/sql.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -14,7 +14,13 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * @file categorytreemodel.cpp
+ * @brief CategoryTreeModel implementation.
+ */
+
 #include "categorytreemodel.h"
+#include "../database.h"
 
 
 #include <QSqlDatabase>
@@ -31,8 +37,8 @@
 #include <QTimer>
 #include <functional>
 
-CategoryTreeModel::CategoryTreeModel(const QString& connectionName, QObject* parent)
-    : ReloadableTreeModel(parent), mConnectionName(connectionName)
+CategoryTreeModel::CategoryTreeModel(const QString& connectionName, DatabaseManager* databaseManager, QObject* parent)
+    : ReloadableTreeModel(parent), mDatabaseManager(databaseManager), mConnectionName(connectionName)
 {
     mRoot = new CategoryNode{-1, QString{}};
     buildTree();
@@ -346,14 +352,9 @@ bool CategoryTreeModel::dropMimeData(const QMimeData* data, Qt::DropAction actio
 }
 
 bool CategoryTreeModel::reparentCategory(int categoryId, int newParentId) {
-    QSqlDatabase db = QSqlDatabase::database(mConnectionName);
-    QSqlQuery q(db);
-    q.prepare("UPDATE categories SET parent_id = ? WHERE id = ?");
-    q.addBindValue(newParentId);
-    q.addBindValue(categoryId);
-    if (!q.exec()) {
-        qWarning() << "CategoryTreeModel: reparent failed:" << q.lastError().text();
+    if (!mDatabaseManager) {
+        qWarning() << "CategoryTreeModel: missing DatabaseManager";
         return false;
     }
-    return true;
+    return mDatabaseManager->reparentCategory(categoryId, newParentId);
 }

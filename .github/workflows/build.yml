@@ -98,6 +98,44 @@ jobs:
         path: ${{ steps.strings.outputs.build-output-dir }}/Testing/Temporary/LastTest.log
         if-no-files-found: warn
 
+  docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: "6.10.0"
+        target: "desktop"
+        arch: "linux_gcc_64"
+        use-official: true
+        email: ${{ secrets.QT_EMAIL }}
+        pw: ${{ secrets.QT_PW }}
+
+    - name: Install Doxygen
+      run: sudo apt-get install -y doxygen
+
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ github.workspace }}/build
+        -DCMAKE_CXX_COMPILER=g++
+        -DCMAKE_C_COMPILER=gcc
+        -DCMAKE_BUILD_TYPE=Release
+        -DENABLE_INTERNAL_DOCS=ON
+        -S ${{ github.workspace }}
+
+    - name: Build documentation
+      run: cmake --build ${{ github.workspace }}/build --target internal-docs
+
+    - name: Upload documentation
+      uses: actions/upload-artifact@v4
+      with:
+        name: internal-docs
+        path: ${{ github.workspace }}/build/docs/html
+
   windows-installer-amd64:
     runs-on: windows-latest
     needs: build
@@ -140,55 +178,6 @@ jobs:
       with:
         name: partvault-windows-installer-amd64
         path: ${{ github.workspace }}/build-installer-amd64/PartVault-Installer-*.exe
-        if-no-files-found: error
-
-  windows-installer-arm64:
-    runs-on: windows-latest
-    needs: build
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-
-    - name: Set up MSVC environment
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: amd64_arm64
-
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v4
-      with:
-        version: "6.10.0"
-        target: "desktop"
-        arch: "win64_msvc2022_arm64"
-        use-official: true
-        email: ${{ secrets.QT_EMAIL }}
-        pw: ${{ secrets.QT_PW }}
-
-    - name: Install IFW tools (x64)
-      shell: pwsh
-      run: |
-        python -m pip install --upgrade aqtinstall
-        python -m aqt install-tool windows desktop tools_ifw -O C:/Qt
-
-    - name: Configure CMake
-      run: >
-        cmake -B ${{ github.workspace }}/build-installer-arm64
-        -A ARM64
-        -DCMAKE_BUILD_TYPE=Release
-        -DENABLE_TESTS=OFF
-        -DENABLE_DUMMY_DATA=OFF
-        -DENABLE_IFW_INSTALLER=ON
-        -S ${{ github.workspace }}
-
-    - name: Build IFW installer
-      run: cmake --build ${{ github.workspace }}/build-installer-arm64 --config Release --target ifw_installer
-
-    - name: Upload installer artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: partvault-windows-installer-arm64
-        path: ${{ github.workspace }}/build-installer-arm64/PartVault-Installer-*.exe
         if-no-files-found: error
 
   deb-package:
@@ -236,4 +225,160 @@ jobs:
       with:
         name: partvault-deb-package
         path: ${{ github.workspace }}/build-deb/*.deb
+        if-no-files-found: error
+
+  # ── MSIX packaging ──────────────────────────────────────────────────────────
+  # Produces a signed MSIX bundle for Windows amd64 and arm64.
+  #
+  # Required repository secrets:
+  #   MSIX_CERTIFICATE_BASE64   — PFX certificate encoded as base64
+  #   MSIX_CERTIFICATE_PASSWORD — Password for the PFX certificate
+  #
+  # Required repository assets:
+  #   packaging/windows/msix/Package.appxmanifest  — MSIX app manifest
+  #   packaging/windows/msix/Assets/               — Required logo images
+  # ────────────────────────────────────────────────────────────────────────────
+  msix:
+    runs-on: windows-latest
+    needs: build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Native x64 build
+          - arch: amd64
+            cmake_arch: x64
+            qt_arch: win64_msvc2022_64
+            msvc_arch: amd64
+
+          # Cross-compiled arm64 build (host toolchain targets ARM64)
+          - arch: arm64
+            cmake_arch: ARM64
+            qt_arch: win64_msvc2022_arm64
+            msvc_arch: amd64_arm64
+
+    steps:
+    # ── 1. Checkout ────────────────────────────────────────────────────────────
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    # ── 2. MSIX packaging environment ─────────────────────────────────────────
+    # Sets up the MSVC toolchain for the target architecture.
+    # MakeAppx.exe and signtool.exe are part of the Windows SDK,
+    # which is pre-installed on windows-latest runners.
+    - name: Set up MSVC environment
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ matrix.msvc_arch }}
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: "6.10.0"
+        target: "desktop"
+        arch: ${{ matrix.qt_arch }}
+        use-official: true
+        email: ${{ secrets.QT_EMAIL }}
+        pw: ${{ secrets.QT_PW }}
+
+    # ── 3. Build app binaries ──────────────────────────────────────────────────
+    - name: Configure CMake
+      run: >
+        cmake -B ${{ github.workspace }}/build-msix-${{ matrix.arch }}
+        -A ${{ matrix.cmake_arch }}
+        -DCMAKE_BUILD_TYPE=Release
+        -DENABLE_TESTS=OFF
+        -S ${{ github.workspace }}
+
+    - name: Build
+      run: >
+        cmake --build ${{ github.workspace }}/build-msix-${{ matrix.arch }}
+        --config Release
+
+    - name: Stage install tree
+      # Install binaries into a clean staging directory used as the MSIX content root
+      run: >
+        cmake --install ${{ github.workspace }}/build-msix-${{ matrix.arch }}
+        --config Release
+        --prefix ${{ github.workspace }}/staging-${{ matrix.arch }}
+
+    - name: Deploy Qt runtime
+      # Copy Qt DLLs and plugins needed at runtime next to the executable
+      shell: pwsh
+      run: |
+        $exePath = Get-ChildItem -Path "${{ github.workspace }}\staging-${{ matrix.arch }}" `
+          -Recurse -Filter "*.exe" | Select-Object -First 1 -ExpandProperty FullName
+        windeployqt --release $exePath
+
+    # ── 4. Package into MSIX ───────────────────────────────────────────────────
+    - name: Copy MSIX manifest and assets
+      # The app manifest and logo assets live under packaging/windows/msix/ in the repo
+      shell: pwsh
+      run: |
+        Copy-Item -Path "${{ github.workspace }}\packaging\windows\msix\*" `
+          -Destination "${{ github.workspace }}\staging-${{ matrix.arch }}" `
+          -Recurse -Force
+
+    - name: Package MSIX with MakeAppx
+      shell: pwsh
+      run: |
+        # Locate MakeAppx.exe from the newest Windows SDK version available on the runner
+        $sdkBin = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+          Where-Object { $_.Name -match "^\d+\.\d+\.\d+\.\d+$" } |
+          Sort-Object Name -Descending |
+          Select-Object -First 1 -ExpandProperty FullName
+        $makeappx = "$sdkBin\x64\MakeAppx.exe"
+
+        & $makeappx pack `
+          /d "${{ github.workspace }}\staging-${{ matrix.arch }}" `
+          /p "${{ github.workspace }}\PartVault-${{ matrix.arch }}.msix" `
+          /nv   # /nv = no validation, accepts developer builds without Store validation
+
+    # ── 5. Sign MSIX ───────────────────────────────────────────────────────────
+    - name: Import signing certificate
+      # Decode the base64 PFX secret, import it into the certificate store,
+      # then expose only the thumbprint as an env variable — the PFX file is
+      # deleted immediately to avoid leaving credentials on disk.
+      shell: pwsh
+      run: |
+        $certBytes = [Convert]::FromBase64String("${{ secrets.MSIX_CERTIFICATE_BASE64 }}")
+        $certPath  = Join-Path $env:RUNNER_TEMP "signing.pfx"
+        [IO.File]::WriteAllBytes($certPath, $certBytes)
+
+        $securePass = ConvertTo-SecureString `
+          "${{ secrets.MSIX_CERTIFICATE_PASSWORD }}" -AsPlainText -Force
+
+        $cert = Import-PfxCertificate `
+          -FilePath $certPath `
+          -CertStoreLocation Cert:\CurrentUser\My `
+          -Password $securePass
+
+        # Persist only the thumbprint; never persist the password or raw cert bytes
+        "CERT_THUMBPRINT=$($cert.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+        Remove-Item $certPath -Force
+
+    - name: Sign MSIX with signtool
+      shell: pwsh
+      run: |
+        $sdkBin = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory |
+          Where-Object { $_.Name -match "^\d+\.\d+\.\d+\.\d+$" } |
+          Sort-Object Name -Descending |
+          Select-Object -First 1 -ExpandProperty FullName
+        $signtool = "$sdkBin\x64\signtool.exe"
+
+        & $signtool sign `
+          /sha1 "$env:CERT_THUMBPRINT" `
+          /fd   SHA256 `
+          /td   SHA256 `
+          /tr   http://timestamp.digicert.com `
+          "${{ github.workspace }}\PartVault-${{ matrix.arch }}.msix"
+
+    # ── 6. Upload artifact ─────────────────────────────────────────────────────
+    - name: Upload MSIX artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: partvault-msix-${{ matrix.arch }}
+        path: ${{ github.workspace }}/PartVault-${{ matrix.arch }}.msix
         if-no-files-found: error

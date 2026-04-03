@@ -19,19 +19,25 @@
 #include <QDialog>
 #include <QString>
 
+/**
+ * @file addpartdialog.h
+ * @brief Dialog for creating a part with quantity and optional parent links.
+ */
+
+class DatabaseManager;
 class QLineEdit;
 class QSpinBox;
 class QDialogButtonBox;
 
-// Dialog for adding a new part.
-// Category and storage location are pre-filled from the current tree selections.
-// On accept, retrieve values via name(), quantity(), categoryId(), locationId().
+/**
+ * @brief Modal dialog used to create one part row.
+ */
 class AddPartDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AddPartDialog(const QString& connectionName, int categoryId, int locationId, QWidget* parent = nullptr);
+    explicit AddPartDialog(const DatabaseManager& databaseManager, int categoryId, int locationId, QWidget* parent = nullptr);
 
     QString name()       const;
     int     quantity()   const;

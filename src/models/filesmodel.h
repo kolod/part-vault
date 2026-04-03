@@ -20,6 +20,12 @@
 #include <QString>
 #include <QList>
 
+/**
+ * @file filesmodel.h
+ * @brief Table model that exposes files attached to the selected part.
+ */
+
+/** @brief Row snapshot used by FilesModel. */
 struct FileRecord
 {
     int     id;
@@ -28,6 +34,9 @@ struct FileRecord
     QString description;
 };
 
+/**
+ * @brief Read-only table model for per-part files.
+ */
 class FilesModel : public QAbstractTableModel
 {
     Q_OBJECT

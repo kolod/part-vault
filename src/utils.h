@@ -33,4 +33,3 @@ bool extractZipArchive(const QString& archivePath, const QString& destinationDir
 // Walks the parent_id chain upward from id in the given table and returns the
 // full ancestor path as "Root → Child → …".  Returns an empty string if id ≤ 0.
 // table must be either "categories" or "storage_locations".
-QString buildAncestorPath(const QString& connectionName, const QString& table, int id);

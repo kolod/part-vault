@@ -14,6 +14,11 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * @file database.cpp
+ * @brief DatabaseManager implementation.
+ */
+
 #include "database.h"
 #include "utils.h"
 #include <QFile>
@@ -600,6 +605,47 @@ int DatabaseManager::addCategory(const QString& name, int parentId) {
     return q.lastInsertId().toInt();
 }
 
+bool DatabaseManager::reparentCategory(int categoryId, int newParentId) {
+    QSqlQuery q(mDatabase);
+    q.prepare("UPDATE categories SET parent_id = ? WHERE id = ?");
+    q.addBindValue(newParentId);
+    q.addBindValue(categoryId);
+    if (!q.exec()) {
+        qWarning() << "reparentCategory failed:" << q.lastError().text();
+        return false;
+    }
+    return q.numRowsAffected() > 0;
+}
+
+QString DatabaseManager::buildAncestorPath(const QString& table, int id) const {
+    if (id <= 0) return {};
+
+    if (table != QStringLiteral("categories") && table != QStringLiteral("storage_locations")) {
+        qWarning() << "buildAncestorPath: unsupported table:" << table;
+        return {};
+    }
+
+    QSqlQuery q(mDatabase);
+    q.prepare(QStringLiteral(
+        "WITH RECURSIVE chain(id, name, parent_id, depth) AS ("
+        "  SELECT id, name, parent_id, 0 FROM %1 WHERE id = :id"
+        "  UNION ALL"
+        "  SELECT t.id, t.name, t.parent_id, c.depth + 1"
+        "  FROM %1 t JOIN chain c ON c.parent_id = t.id"
+        "  WHERE c.parent_id IS NOT NULL AND c.parent_id > 0"
+        ")"
+        "SELECT GROUP_CONCAT(name, ' -> ')"
+        "FROM (SELECT name FROM chain ORDER BY depth DESC)"
+    ).arg(table));
+    q.bindValue(QStringLiteral(":id"), id);
+    if (!q.exec() || !q.next()) {
+        qWarning() << "buildAncestorPath query failed for" << table << "id" << id << ":" << q.lastError().text();
+        return {};
+    }
+
+    return q.value(0).toString();
+}
+
 int DatabaseManager::addPart(const QString& name, int quantity, int categoryId, int locationId) {
     QSqlQuery q(mDatabase);
     q.prepare("INSERT INTO parts (name, quantity, category_id, storage_location_id) VALUES (?, ?, ?, ?)");
@@ -621,14 +667,182 @@ int DatabaseManager::addPart(const QString& name, int quantity, int categoryId, 
 }
 
 bool DatabaseManager::removePart(int partId) {
+    QList<QPair<int, QString>> exclusiveFiles;
+    if (!collectExclusiveFilesForPart(partId, &exclusiveFiles)) {
+        return false;
+    }
+
+    if (!mDatabase.transaction()) {
+        qWarning() << "removePart: transaction failed:" << mDatabase.lastError().text();
+        return false;
+    }
+
+    if (!deletePartRow(partId)) {
+        mDatabase.rollback();
+        return false;
+    }
+
+    for (const auto& [fileId, path] : exclusiveFiles) {
+        if (!deleteFileRecord(fileId, path)) {
+            mDatabase.rollback();
+            return false;
+        }
+    }
+
+    if (!mDatabase.commit()) {
+        qWarning() << "removePart: commit failed:" << mDatabase.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::removeFile(int fileId) {
+    FileRefInfo info;
+    if (!fetchFileRefInfo(fileId, &info)) {
+        return false;
+    }
+
+    if (info.refCount > 1)
+        return true;   // still used by other parts — nothing to delete
+
+    return deleteFileRecord(fileId, info.path);
+}
+
+bool DatabaseManager::deleteFileRecord(int fileId, const QString& relativePath) {
+    // Delete physical file only if it lives inside the database directory
+    const QString absPath = absolutePath(relativePath);
+    const bool insideDbDir = QFileInfo(absPath).absolutePath()
+                             .startsWith(QFileInfo(mDbDir).absoluteFilePath());
+    if (insideDbDir && QFile::exists(absPath) && !QFile::remove(absPath)) {
+        qWarning() << "deleteFileRecord: failed to delete file:" << absPath;
+        return false;
+    }
+
+    QSqlQuery q(mDatabase);
+    q.prepare(QStringLiteral("DELETE FROM files WHERE id = ?"));
+    q.addBindValue(fileId);
+    if (!q.exec()) {
+        qWarning() << "deleteFileRecord: failed:" << q.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::linkFileToPart(int partId, int fileId) {
+    QSqlQuery link(mDatabase);
+    link.prepare(QStringLiteral(
+        "INSERT OR IGNORE INTO part_files (part_id, file_id) VALUES (?, ?)"));
+    link.addBindValue(partId);
+    link.addBindValue(fileId);
+    if (!link.exec()) {
+        qWarning() << "linkFileToPart failed:" << link.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::collectExclusiveFilesForPart(int partId, QList<QPair<int, QString>>* exclusiveFiles) {
+    if (!exclusiveFiles) {
+        qWarning() << "collectExclusiveFilesForPart: null output list";
+        return false;
+    }
+
+    QSqlQuery filesQuery(mDatabase);
+    filesQuery.prepare(
+        "SELECT f.id, f.path FROM files f "
+        "JOIN part_files pf ON pf.file_id = f.id "
+        "WHERE pf.part_id = ? "
+        "AND (SELECT COUNT(*) FROM part_files pf2 WHERE pf2.file_id = f.id) = 1"
+    );
+    filesQuery.addBindValue(partId);
+    if (!filesQuery.exec()) {
+        qWarning() << "collectExclusiveFilesForPart failed:" << filesQuery.lastError().text();
+        return false;
+    }
+
+    exclusiveFiles->clear();
+    while (filesQuery.next())
+        exclusiveFiles->append({filesQuery.value(0).toInt(), filesQuery.value(1).toString()});
+
+    return true;
+}
+
+bool DatabaseManager::deletePartRow(int partId) {
     QSqlQuery q(mDatabase);
     q.prepare("DELETE FROM parts WHERE id = ?");
     q.addBindValue(partId);
-    if (!q.exec()) {
-        qWarning() << "removePart failed:" << q.lastError().text();
+    if (!q.exec() || q.numRowsAffected() == 0) {
+        qWarning() << "deletePartRow failed:" << q.lastError().text();
         return false;
     }
-    return q.numRowsAffected() > 0;
+    return true;
+}
+
+int DatabaseManager::findReusableManagedFileId(const QString& relativePath, int partId) {
+    QSqlQuery existing(mDatabase);
+    existing.prepare(QStringLiteral(
+        "SELECT f.id "
+        "FROM files f "
+        "JOIN part_files pf ON pf.file_id = f.id "
+        "WHERE f.path = ? AND pf.part_id <> ? "
+        "LIMIT 1"));
+    existing.addBindValue(relativePath);
+    existing.addBindValue(partId);
+    if (!existing.exec()) {
+        qWarning() << "findReusableManagedFileId failed:" << existing.lastError().text();
+        return -1;
+    }
+    if (!existing.next())
+        return 0;
+    return existing.value(0).toInt();
+}
+
+int DatabaseManager::insertFileRecord(const QString& relativePath, const QString& detectedType) {
+    QSqlQuery q(mDatabase);
+    q.prepare(QStringLiteral(
+        "INSERT OR IGNORE INTO files (path, type, description) VALUES (?, ?, ?)"));
+    q.addBindValue(relativePath);
+    q.addBindValue(detectedType);
+    q.addBindValue(QVariant(QMetaType::fromType<QString>()));
+    if (!q.exec()) {
+        qWarning() << "insertFileRecord failed:" << q.lastError().text();
+        return -1;
+    }
+    return q.lastInsertId().toInt();
+}
+
+int DatabaseManager::findFileIdByPath(const QString& relativePath) {
+    QSqlQuery sel(mDatabase);
+    sel.prepare(QStringLiteral("SELECT id FROM files WHERE path = ?"));
+    sel.addBindValue(relativePath);
+    if (!sel.exec() || !sel.next()) {
+        qWarning() << "findFileIdByPath failed for path:" << relativePath;
+        return -1;
+    }
+    return sel.value(0).toInt();
+}
+
+bool DatabaseManager::fetchFileRefInfo(int fileId, FileRefInfo* info) {
+    if (!info) {
+        qWarning() << "fetchFileRefInfo: null output";
+        return false;
+    }
+
+    QSqlQuery sel(mDatabase);
+    sel.prepare(
+        "SELECT f.path, COUNT(pf.part_id) "
+        "FROM files f LEFT JOIN part_files pf ON pf.file_id = f.id "
+        "WHERE f.id = ? GROUP BY f.id"
+    );
+    sel.addBindValue(fileId);
+    if (!sel.exec() || !sel.next()) {
+        qWarning() << "fetchFileRefInfo: file not found:" << fileId;
+        return false;
+    }
+
+    info->path = sel.value(0).toString();
+    info->refCount = sel.value(1).toInt();
+    return true;
 }
 
 int DatabaseManager::addStorageLocation(const QString& name, int parentId) {
@@ -644,6 +858,87 @@ int DatabaseManager::addStorageLocation(const QString& name, int parentId) {
         return -1;
     }
     return q.lastInsertId().toInt();
+}
+
+int DatabaseManager::addFile(int partId, const QString& absoluteFilePath) {
+    const QFileInfo sourceInfo(absoluteFilePath);
+    if (!sourceInfo.exists() || !sourceInfo.isFile()) {
+        qWarning() << "addFile: source file does not exist:" << absoluteFilePath;
+        return -1;
+    }
+
+    const QString dbRootPath = QDir(mDbDir).absolutePath();
+    const QString sourceAbsPath = sourceInfo.absoluteFilePath();
+    const QString normalizedDbRoot = QDir::cleanPath(dbRootPath) + QDir::separator();
+    const QString normalizedSource = QDir::cleanPath(sourceAbsPath);
+
+    QString storedAbsPath = sourceAbsPath;
+    if (!normalizedSource.startsWith(normalizedDbRoot)) {
+        const QString type = inferFileType(sourceAbsPath);
+        const QString subdir = (type == QStringLiteral("datasheet"))
+            ? QStringLiteral("datasheets")
+            : (type == QStringLiteral("model"))
+                ? QStringLiteral("models")
+                : QStringLiteral("cad");
+
+        const QString targetDirPath = QDir(mDbDir).filePath(subdir);
+
+        // If the same managed path is already linked to another part, reuse it.
+        const QString preferredAbsPath = QDir(targetDirPath).filePath(sourceInfo.fileName());
+        const QString preferredRelative = QDir(mDbDir).relativeFilePath(preferredAbsPath);
+        const int existingFileId = findReusableManagedFileId(preferredRelative, partId);
+        if (existingFileId < 0)
+            return -1;
+        if (existingFileId > 0) {
+            if (linkFileToPart(partId, existingFileId))
+                return existingFileId;
+            return -1;
+        }
+
+        if (!QDir().mkpath(targetDirPath)) {
+            qWarning() << "addFile: failed to create target directory:" << targetDirPath;
+            return -1;
+        }
+
+        QString targetFileName = sourceInfo.fileName();
+        QString candidatePath = QDir(targetDirPath).filePath(targetFileName);
+        const QString baseName = sourceInfo.completeBaseName();
+        const QString suffix = sourceInfo.suffix();
+
+        int n = 1;
+        while (QFileInfo::exists(candidatePath)) {
+            targetFileName = suffix.isEmpty()
+                ? QStringLiteral("%1_%2").arg(baseName).arg(n)
+                : QStringLiteral("%1_%2.%3").arg(baseName).arg(n).arg(suffix);
+            candidatePath = QDir(targetDirPath).filePath(targetFileName);
+            ++n;
+        }
+
+        if (!QFile::copy(sourceAbsPath, candidatePath)) {
+            qWarning() << "addFile: failed to copy file to managed storage:" << candidatePath;
+            return -1;
+        }
+        storedAbsPath = candidatePath;
+    }
+
+    const QString relative = QDir(mDbDir).relativeFilePath(storedAbsPath);
+    const QString detectedType = inferFileType(relative);
+
+    int fileId = insertFileRecord(relative, detectedType);
+    if (fileId < 0) {
+        return -1;
+    }
+    if (fileId <= 0) {
+        fileId = findFileIdByPath(relative);
+        if (fileId < 0)
+            return -1;
+    }
+
+    if (!linkFileToPart(partId, fileId)) {
+        return -1;
+    }
+
+    return fileId;
 }
 
 int DatabaseManager::removeUnusedCategories() {
@@ -681,38 +976,22 @@ int DatabaseManager::removeUnusedFiles() {
     }
 
     QList<QPair<int, QString>> unusedFiles;
-    while (selectQuery.next()) {
+    while (selectQuery.next())
         unusedFiles.append({selectQuery.value(0).toInt(), selectQuery.value(1).toString()});
-    }
 
-    if (unusedFiles.isEmpty()) {
+    if (unusedFiles.isEmpty())
         return 0;
-    }
 
     if (!mDatabase.transaction()) {
         qWarning() << "removeUnusedFiles transaction start failed:" << mDatabase.lastError().text();
         return -1;
     }
 
-    QSqlQuery deleteQuery(mDatabase);
-    deleteQuery.prepare("DELETE FROM files WHERE id = ?");
-
-    int removedCount = 0;
-    for (const auto& unusedFile : unusedFiles) {
-        const QString absPath = absolutePath(unusedFile.second);
-        if (QFile::exists(absPath) && !QFile::remove(absPath)) {
-            qWarning() << "removeUnusedFiles failed to delete file:" << absPath;
+    for (const auto& [fileId, path] : unusedFiles) {
+        if (!deleteFileRecord(fileId, path)) {
             mDatabase.rollback();
             return -1;
         }
-
-        deleteQuery.bindValue(0, unusedFile.first);
-        if (!deleteQuery.exec()) {
-            qWarning() << "removeUnusedFiles delete failed:" << deleteQuery.lastError().text();
-            mDatabase.rollback();
-            return -1;
-        }
-        ++removedCount;
     }
 
     if (!mDatabase.commit()) {
@@ -720,7 +999,7 @@ int DatabaseManager::removeUnusedFiles() {
         return -1;
     }
 
-    return removedCount;
+    return unusedFiles.size();
 }
 
 int DatabaseManager::removeUnusedStorageLocations() {

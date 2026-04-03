@@ -20,7 +20,14 @@
 #include <QString>
 #include <QList>
 
-// Internal tree node — one per category row.
+/**
+ * @file categorytreemodel.h
+ * @brief Category tree model used by the categories view.
+ */
+
+class DatabaseManager;
+
+/** @brief Internal node representing one row from categories. */
 struct CategoryNode
 {
     int      id;
@@ -32,6 +39,9 @@ struct CategoryNode
     ~CategoryNode() { qDeleteAll(children); }
 };
 
+/**
+ * @brief Hierarchical model for categories with active-node highlighting.
+ */
 class CategoryTreeModel : public ReloadableTreeModel
 {
     Q_OBJECT
@@ -42,7 +52,7 @@ public:
         IdRole = Qt::UserRole + 1
     };
 
-    explicit CategoryTreeModel(const QString& connectionName, QObject* parent = nullptr);
+    explicit CategoryTreeModel(const QString& connectionName, DatabaseManager* databaseManager, QObject* parent = nullptr);
     ~CategoryTreeModel() override;
 
     // Reloads the entire tree from the database.
@@ -86,6 +96,7 @@ signals:
     void reparentRequested(int categoryId, int newParentId);
 
 private:
+    DatabaseManager* mDatabaseManager = nullptr;
     QString        mConnectionName;
     CategoryNode*  mRoot = nullptr;   // invisible root; its children are top-level categories
     int            mLocationFilter = 0;  // 0/−1 = no filter

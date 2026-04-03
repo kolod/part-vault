@@ -14,8 +14,13 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * @file addpartdialog.cpp
+ * @brief AddPartDialog implementation.
+ */
+
 #include "addpartdialog.h"
-#include "../utils.h"
+#include "../database.h"
 
 #include <QLineEdit>
 #include <QSpinBox>
@@ -25,7 +30,7 @@
 #include <QFormLayout>
 #include <QVBoxLayout>
 
-AddPartDialog::AddPartDialog(const QString& connectionName, int categoryId, int locationId, QWidget* parent)
+AddPartDialog::AddPartDialog(const DatabaseManager& databaseManager, int categoryId, int locationId, QWidget* parent)
     : QDialog(parent), mCategoryId(categoryId), mLocationId(locationId)
 {
     setWindowTitle(tr("Add Part"));
@@ -38,8 +43,8 @@ AddPartDialog::AddPartDialog(const QString& connectionName, int categoryId, int 
     mQuantitySpin->setRange(0, 999999);
     mQuantitySpin->setValue(1);
 
-    const QString catPath = buildAncestorPath(connectionName, QStringLiteral("categories"),        categoryId);
-    const QString locPath = buildAncestorPath(connectionName, QStringLiteral("storage_locations"), locationId);
+    const QString catPath = databaseManager.buildAncestorPath(QStringLiteral("categories"),        categoryId);
+    const QString locPath = databaseManager.buildAncestorPath(QStringLiteral("storage_locations"), locationId);
 
     auto* catLabel = new QLabel(catPath.isEmpty() ? tr("(none)") : catPath, this);
     auto* locLabel = new QLabel(locPath.isEmpty() ? tr("(none)") : locPath, this);

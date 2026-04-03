@@ -14,8 +14,13 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * @file addcategorydialog.cpp
+ * @brief AddCategoryDialog implementation.
+ */
+
 #include "addcategorydialog.h"
-#include "../utils.h"
+#include "../database.h"
 
 #include <QLineEdit>
 #include <QDialogButtonBox>
@@ -24,7 +29,7 @@
 #include <QLabel>
 #include <QPushButton>
 
-AddCategoryDialog::AddCategoryDialog(const QString& connectionName, int parentId, QWidget* parent)
+AddCategoryDialog::AddCategoryDialog(const DatabaseManager& databaseManager, int parentId, QWidget* parent)
     : QDialog(parent), mParentId(parentId)
 {
     setWindowTitle(tr("Add Category"));
@@ -32,7 +37,7 @@ AddCategoryDialog::AddCategoryDialog(const QString& connectionName, int parentId
 
     mNameEdit = new QLineEdit(this);
 
-    const QString path = buildAncestorPath(connectionName, QStringLiteral("categories"), mParentId);
+    const QString path = databaseManager.buildAncestorPath(QStringLiteral("categories"), mParentId);
     auto* pathLabel = new QLabel(path.isEmpty() ? tr("(top level)") : path, this);
     pathLabel->setWordWrap(true);
 

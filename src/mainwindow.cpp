@@ -44,7 +44,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     const QString conn = mDatabaseManager.database().connectionName();
     mPartsModel    = new PartsModel(conn, this);
     mFilesModel    = new FilesModel(conn, this);
-    mCategoryModel = new CategoryTreeModel(conn, this);
+    mCategoryModel = new CategoryTreeModel(conn, &mDatabaseManager, this);
     mStorageModel  = new StorageTreeModel(conn, this);
 
     // ── Category tree ─────────────────────────────────────────────────────────
@@ -59,15 +59,60 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     ui->viewStorageLocations->setModel(mStorageModel);
 
     // ── Parts table ───────────────────────────────────────────────────────────
-    ui->tableView->setModel(mPartsModel);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColName,       QHeaderView::Stretch);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColQuantity,   QHeaderView::ResizeToContents);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColCategory,   QHeaderView::ResizeToContents);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColLocation,   QHeaderView::ResizeToContents);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(PartsModel::ColLastChange, QHeaderView::ResizeToContents);
-    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->tableView->verticalHeader()->setVisible(false);
+    ui->viewParts->setModel(mPartsModel);
+    ui->viewParts->horizontalHeader()->setSectionResizeMode(PartsModel::ColName,       QHeaderView::Stretch);
+    ui->viewParts->horizontalHeader()->setSectionResizeMode(PartsModel::ColQuantity,   QHeaderView::ResizeToContents);
+    ui->viewParts->horizontalHeader()->setSectionResizeMode(PartsModel::ColCategory,   QHeaderView::ResizeToContents);
+    ui->viewParts->horizontalHeader()->setSectionResizeMode(PartsModel::ColLocation,   QHeaderView::ResizeToContents);
+    ui->viewParts->horizontalHeader()->setSectionResizeMode(PartsModel::ColLastChange, QHeaderView::ResizeToContents);
+    ui->viewParts->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->viewParts->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->viewParts->verticalHeader()->setVisible(false);
+    ui->viewParts->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    const auto updatePartActions = [this]() {
+        const bool hasSelection = ui->viewParts->currentIndex().isValid();
+        ui->actionRemovePart->setEnabled(hasSelection);
+        ui->actionAddFile->setEnabled(hasSelection);
+    };
+
+    connect(ui->viewParts->selectionModel(), &QItemSelectionModel::currentChanged, this,
+            [updatePartActions](const QModelIndex&, const QModelIndex&) {
+        updatePartActions();
+    });
+    connect(mPartsModel, &QAbstractItemModel::modelReset, this, updatePartActions);
+    updatePartActions();
+
+    connect(ui->viewParts, &QWidget::customContextMenuRequested, this, [this, updatePartActions](const QPoint& pos) {
+        const QModelIndex index = ui->viewParts->indexAt(pos);
+        if (index.isValid())
+            ui->viewParts->setCurrentIndex(index);
+        updatePartActions();
+
+        QMenu menu(this);
+        menu.addAction(ui->actionAddFile);
+        menu.addSeparator();
+        menu.addAction(ui->actionRemovePart);
+        menu.exec(ui->viewParts->viewport()->mapToGlobal(pos));
+    });
+
+    connect(ui->actionAddFile, &QAction::triggered, this, [this]() {
+        const QModelIndex idx = ui->viewParts->currentIndex();
+        if (!idx.isValid()) return;
+        const int partId = mPartsModel->partId(idx.row());
+        if (partId <= 0) return;
+
+        const QString filePath = QFileDialog::getOpenFileName(
+            this, tr("Add File"), QString(), tr("All Files (*)"));
+        if (filePath.isEmpty()) return;
+
+        if (mDatabaseManager.addFile(partId, filePath) < 0) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to add file."));
+            return;
+        }
+
+        mFilesModel->reload();
+    });
 
     // ── Files list ────────────────────────────────────────────────────────────
     ui->viewFiles->setModel(mFilesModel);
@@ -224,11 +269,10 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     // ── Edit menu ─────────────────────────────────────────────────────────────
     // Add Category action
     connect(ui->actionAddCategory, &QAction::triggered, this, [this]() {
-        const QString conn = mDatabaseManager.database().connectionName();
         auto index = ui->viewCategories->currentIndex();
         auto categoryId = mCategoryModel->categoryId(index);
 
-        AddCategoryDialog dlg(conn, categoryId, this);
+        AddCategoryDialog dlg(mDatabaseManager, categoryId, this);
         if (dlg.exec() != QDialog::Accepted) return;
 
         const int newId = mDatabaseManager.addCategory(dlg.name(), dlg.parentId());
@@ -245,10 +289,9 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Add Part action
     connect(ui->actionAddPart, &QAction::triggered, this, [this]() {
-        const QString conn = mDatabaseManager.database().connectionName();
         const int catId = mCategoryModel->categoryId(ui->viewCategories->currentIndex());
         const int locId = mStorageModel->locationId(ui->viewStorageLocations->currentIndex());
-        AddPartDialog dlg(conn, catId, locId, this);
+        AddPartDialog dlg(mDatabaseManager, catId, locId, this);
         if (dlg.exec() != QDialog::Accepted) return;
 
         if (mDatabaseManager.addPart(dlg.name(), dlg.quantity(), dlg.categoryId(), dlg.locationId()) >= 0)
@@ -257,11 +300,10 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Add Storage Location action
     connect(ui->actionAddSorageLocation, &QAction::triggered, this, [this]() {
-        const QString conn = mDatabaseManager.database().connectionName();
         auto index = ui->viewStorageLocations->currentIndex();
         auto locationId = mStorageModel->locationId(index);
 
-        AddStorageLocationDialog dlg(conn, locationId, this);
+        AddStorageLocationDialog dlg(mDatabaseManager, locationId, this);
         if (dlg.exec() != QDialog::Accepted) return;
 
         const int newId = mDatabaseManager.addStorageLocation(dlg.name(), dlg.parentId());
@@ -278,7 +320,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
 
     // Remove Part action
     connect(ui->actionRemovePart, &QAction::triggered, this, [this]() {
-        const QModelIndex idx = ui->tableView->currentIndex();
+        const QModelIndex idx = ui->viewParts->currentIndex();
         if (!idx.isValid()) return;
         const int partId = mPartsModel->partId(idx.row());
         const QString name = mPartsModel->data(mPartsModel->index(idx.row(), PartsModel::ColName)).toString();
@@ -429,7 +471,7 @@ MainWindow::MainWindow(DatabaseManager &databaseManager, QWidget *parent)
     });
 
     // Show files for the selected part
-    connect(ui->tableView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
+    connect(ui->viewParts->selectionModel(), &QItemSelectionModel::currentChanged, this, [this](const QModelIndex& current, const QModelIndex&) {
         const int partId = current.isValid() ? mPartsModel->partId(current.row()) : -1;
         mFilesModel->setPart(partId);
     });
@@ -487,8 +529,8 @@ void MainWindow::restoreSession() {
         for (int r = 0; r < mPartsModel->rowCount(); ++r) {
             if (mPartsModel->partId(r) == selectedPartId) {
                 const QModelIndex idx = mPartsModel->index(r, 0);
-                ui->tableView->setCurrentIndex(idx);
-                ui->tableView->scrollTo(idx);
+                ui->viewParts->setCurrentIndex(idx);
+                ui->viewParts->scrollTo(idx);
                 break;
             }
         }
@@ -536,7 +578,7 @@ void MainWindow::saveSession() {
     settings.setValue("storage/selected", selectedStorageId);
 
     // Save selected part ID
-    const int selectedPartId = mPartsModel->partId(ui->tableView->currentIndex().row());
+    const int selectedPartId = mPartsModel->partId(ui->viewParts->currentIndex().row());
     settings.setValue("parts/selected", selectedPartId > 0 ? selectedPartId : 0);
 }
 

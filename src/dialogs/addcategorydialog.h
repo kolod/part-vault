@@ -19,20 +19,25 @@
 #include <QDialog>
 #include <QString>
 
+/**
+ * @file addcategorydialog.h
+ * @brief Dialog for creating a category under a selected parent.
+ */
+
+class DatabaseManager;
 class QLineEdit;
 class QLabel;
 class QDialogButtonBox;
 
-// Dialog for adding a new category as a child of a pre-determined parent.
-// The parent is passed at construction time (taken from the current tree selection).
-// The full ancestor path is shown as read-only text.
-// parentId() == 0 means top-level (child of the virtual "All" root).
+/**
+ * @brief Modal dialog used to create a category.
+ */
 class AddCategoryDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AddCategoryDialog(const QString& connectionName, int parentId, QWidget* parent = nullptr);
+    explicit AddCategoryDialog(const DatabaseManager& databaseManager, int parentId, QWidget* parent = nullptr);
 
     QString name()     const;
     int     parentId() const;   // the id passed at construction

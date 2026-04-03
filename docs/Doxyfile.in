@@ -1,0 +1,31 @@
+PROJECT_NAME           = "PartVault Internal API"
+PROJECT_NUMBER         = "@PROJECT_VERSION@"
+OUTPUT_DIRECTORY       = "@DOXYGEN_OUTPUT_DIR@"
+CREATE_SUBDIRS         = NO
+
+INPUT                  = "@CMAKE_SOURCE_DIR@/src/database.h" \
+                         "@CMAKE_SOURCE_DIR@/src/database.cpp" \
+                         "@CMAKE_SOURCE_DIR@/src/models" \
+                         "@CMAKE_SOURCE_DIR@/src/views" \
+                         "@CMAKE_SOURCE_DIR@/src/dialogs"
+FILE_PATTERNS          = *.h *.hpp *.c *.cpp
+RECURSIVE              = YES
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+INTERNAL_DOCS          = YES
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+
+JAVADOC_AUTOBRIEF      = YES
+MULTILINE_CPP_IS_BRIEF = YES
+MARKDOWN_SUPPORT       = YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES

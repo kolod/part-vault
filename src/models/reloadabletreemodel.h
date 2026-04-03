@@ -18,9 +18,14 @@
 
 #include <QAbstractItemModel>
 
-// Abstract base for tree models that support a plain reload().
-// TreeViewEx calls reload() through this interface so it can
-// preserve the expanded state without knowing the concrete model type.
+/**
+ * @file reloadabletreemodel.h
+ * @brief Shared interface for tree models supporting full reload.
+ */
+
+/**
+ * @brief Abstract base for tree models that can reload themselves.
+ */
 class ReloadableTreeModel : public QAbstractItemModel
 {
     Q_OBJECT

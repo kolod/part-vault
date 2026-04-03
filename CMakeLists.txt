@@ -7,6 +7,7 @@ message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 option(ENABLE_TESTS "Build unit tests" ON)
 option(ENABLE_IFW_INSTALLER "Build Qt Installer Framework installer" ON)
 option(ENABLE_DUMMY_DATA "Populate database with dummy data on startup (for testing/demo)" OFF)
+option(ENABLE_INTERNAL_DOCS "Build internal API documentation with Doxygen" OFF)
 
 find_package(Qt6 6.7...6.11 REQUIRED COMPONENTS Core Widgets Sql LinguistTools Test)
 
@@ -54,6 +55,22 @@ endif()
 if(ENABLE_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if(ENABLE_INTERNAL_DOCS)
+    find_package(Doxygen REQUIRED)
+    set(DOXYGEN_OUTPUT_DIR "${CMAKE_BINARY_DIR}/docs")
+    set(DOXYGEN_CONFIG_IN  "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
+    set(DOXYGEN_CONFIG_OUT "${CMAKE_BINARY_DIR}/Doxyfile")
+
+    configure_file(${DOXYGEN_CONFIG_IN} ${DOXYGEN_CONFIG_OUT} @ONLY)
+
+    add_custom_target(internal-docs
+        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_CONFIG_OUT}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Generating internal API documentation with Doxygen"
+        VERBATIM
+    )
 endif()
 
 # CPack / Debian package

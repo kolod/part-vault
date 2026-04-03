@@ -19,19 +19,24 @@
 #include <QDialog>
 #include <QString>
 
+/**
+ * @file addstoragelocationdialog.h
+ * @brief Dialog for creating storage locations under a selected parent.
+ */
+
+class DatabaseManager;
 class QLineEdit;
 class QDialogButtonBox;
 
-// Dialog for adding a new storage location as a child of a pre-determined parent.
-// The parent is passed at construction time (taken from the current tree selection).
-// The full ancestor path is shown as read-only text.
-// parentId() == -1 means top-level.
+/**
+ * @brief Modal dialog used to create a storage location.
+ */
 class AddStorageLocationDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit AddStorageLocationDialog(const QString& connectionName, int parentId, QWidget* parent = nullptr);
+    explicit AddStorageLocationDialog(const DatabaseManager& databaseManager, int parentId, QWidget* parent = nullptr);
 
     QString name()     const;
     int     parentId() const;

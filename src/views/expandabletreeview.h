@@ -19,11 +19,16 @@
 #include <QTreeView>
 #include <QSet>
 
+/**
+ * @file expandabletreeview.h
+ * @brief Tree view helper that preserves expanded state across reload.
+ */
+
 class ReloadableTreeModel;
 
-// QTreeView subclass that reloads its ReloadableTreeModel while preserving
-// which nodes were expanded.  Both the category tree and the storage-location
-// tree use this so the expand/collapse logic lives in exactly one place.
+/**
+ * @brief QTreeView extension with reload-and-restore-expanded behavior.
+ */
 class TreeViewEx : public QTreeView
 {
     Q_OBJECT

@@ -14,8 +14,13 @@
 //    You should have received a copy of the GNU General Public License
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * @file addstoragelocationdialog.cpp
+ * @brief AddStorageLocationDialog implementation.
+ */
+
 #include "addstoragelocationdialog.h"
-#include "../utils.h"
+#include "../database.h"
 
 #include <QLineEdit>
 #include <QDialogButtonBox>
@@ -24,7 +29,7 @@
 #include <QLabel>
 #include <QPushButton>
 
-AddStorageLocationDialog::AddStorageLocationDialog(const QString& connectionName, int parentId, QWidget* parent)
+AddStorageLocationDialog::AddStorageLocationDialog(const DatabaseManager& databaseManager, int parentId, QWidget* parent)
     : QDialog(parent), mParentId(parentId)
 {
     setWindowTitle(tr("Add Storage Location"));
@@ -32,7 +37,7 @@ AddStorageLocationDialog::AddStorageLocationDialog(const QString& connectionName
 
     mNameEdit = new QLineEdit(this);
 
-    const QString path = buildAncestorPath(connectionName, QStringLiteral("storage_locations"), mParentId);
+    const QString path = databaseManager.buildAncestorPath(QStringLiteral("storage_locations"), mParentId);
     auto* pathLabel = new QLabel(path.isEmpty() ? tr("(top level)") : path, this);
     pathLabel->setWordWrap(true);
 

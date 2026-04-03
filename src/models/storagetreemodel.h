@@ -20,7 +20,12 @@
 #include <QString>
 #include <QList>
 
-// Internal tree node — one per storage_locations row.
+/**
+ * @file storagetreemodel.h
+ * @brief Storage location tree model.
+ */
+
+/** @brief Internal node representing one row from storage_locations. */
 struct StorageNode
 {
     int      id;
@@ -32,6 +37,9 @@ struct StorageNode
     ~StorageNode() { qDeleteAll(children); }
 };
 
+/**
+ * @brief Hierarchical model for storage locations with active-node highlighting.
+ */
 class StorageTreeModel : public ReloadableTreeModel
 {
     Q_OBJECT

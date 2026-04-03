@@ -20,6 +20,12 @@
 #include <QString>
 #include <QList>
 
+/**
+ * @file partsmodel.h
+ * @brief Table model that exposes filtered part rows.
+ */
+
+/** @brief Row snapshot used by PartsModel. */
 struct PartRecord
 {
     int     id;
@@ -30,6 +36,9 @@ struct PartRecord
     QString lastChange;
 };
 
+/**
+ * @brief Read-only table model for parts list view.
+ */
 class PartsModel : public QAbstractTableModel
 {
     Q_OBJECT
